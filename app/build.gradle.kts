@@ -22,12 +22,34 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // 三种主流 ABI；x86 平板/模拟器可用 x86_64
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
+    }
+
+    // ABI splits：每个架构一个 APK + 一个 universal APK
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = true
+        }
+    }
+
+    signingConfigs {
+        // 没有正式 keystore 时，release 复用 debug key 签。
+        // debug.keystore 由 Android SDK 自动生成，CI 上 Gradle 会从 ~/.android/debug.keystore 读取
+        // 不存在时让 Gradle 自动生成（AGP 8+ 默认行为）
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

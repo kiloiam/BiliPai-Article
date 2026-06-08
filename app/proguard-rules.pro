@@ -1,7 +1,7 @@
 # Add project specific ProGuard rules here.
 
 # Keep Kotlinx Serialization classes
--keepattributes *Annotation*, InnerClasses
+-keepattributes *Annotation*, InnerClasses, Signature, Exceptions
 -dontnote kotlinx.serialization.AnnotationsKt
 -keepclassmembers class kotlinx.serialization.json.** {
     *** Companion;
@@ -17,11 +17,38 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 
-# Keep Room entities
+# Keep Room entities + DAOs
 -keep class com.minipai.article.core.database.** { *; }
+-keep class * extends androidx.room.RoomDatabase { *; }
+-keep @androidx.room.Entity class * { *; }
+-keepclassmembers @androidx.room.Entity class * { *; }
 
 # Retrofit
--keepattributes Signature
--keepattributes Exceptions
 -keep,allowobfuscation,allowshrinking interface retrofit2.Call
 -keep,allowobfuscation,allowshrinking class retrofit2.Response
+-keep,allowobfuscation,allowshrinking interface * {
+    @retrofit2.http.* <methods>;
+}
+
+# OkHttp
+-dontwarn okhttp3.internal.platform.**
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**
+
+# Coil
+-dontwarn coil.**
+
+# Compose
+-keep class androidx.compose.** { *; }
+-keepclassmembers class androidx.compose.runtime.** { *; }
+
+# Kotlin reflection (used by Retrofit)
+-keep class kotlin.Metadata { *; }
+-keep class kotlin.reflect.** { *; }
+-dontwarn kotlin.reflect.jvm.internal.**
+
+# Keep WebView bridge classes (reflective access by Android)
+-keepclassmembers class * extends android.webkit.WebViewClient { *; }
+-keepclassmembers class * extends android.webkit.WebChromeClient { *; }
+

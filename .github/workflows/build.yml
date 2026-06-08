@@ -1,15 +1,15 @@
-name: Build Debug APK
+name: Build APK
 
 on:
   push:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
 
 jobs:
   build:
-    name: Build APK
+    name: Build Release APK (split + minified)
     runs-on: ubuntu-latest
 
     steps:
@@ -22,33 +22,37 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # 注：本仓库未提交 gradle/wrapper/gradle-wrapper.jar（gradlew 脚本）
-      # 由 setup-gradle action 自动下载 gradle 8.10.2 distribution
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
 
-      - name: Assemble Debug APK
-        run: gradle :app:assembleDebug --no-daemon
+      - name: Assemble Release APK
+        run: gradle :app:assembleRelease --no-daemon
 
-      - name: Upload APK
+      - name: Upload per-ABI APKs + universal APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: app-release
+          path: |
+            app/build/outputs/apk/release/*-release.apk
           if-no-files-found: error
           retention-days: 30
 
-      - name: Report APK size
+      - name: Report APK sizes
         if: success()
         run: |
-          APK="app/build/outputs/apk/debug/app-debug.apk"
-          if [ -f "$APK" ]; then
-            SIZE_BYTES=$(stat -c %s "$APK")
-            SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $SIZE_BYTES/1048576}")
-            echo "### ✅ Build succeeded" >> $GITHUB_STEP_SUMMARY
-            echo "**APK size: ${SIZE_MB} MB** (${SIZE_BYTES} bytes)" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Download from the **Artifacts** section of this workflow run." >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "### ✅ Release build succeeded" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| APK | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|------|" >> $GITHUB_STEP_SUMMARY
+          for APK in app/build/outputs/apk/release/*-release.apk; do
+            if [ -f "$APK" ]; then
+              SIZE_BYTES=$(stat -c %s "$APK")
+              SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $SIZE_BYTES/1048576}")
+              NAME=$(basename "$APK")
+              echo "| \`$NAME\` | ${SIZE_MB} MB |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download from the **Artifacts** section of this workflow run." >> $GITHUB_STEP_SUMMARY
