@@ -2,13 +2,9 @@ package com.minipai.article.feature.search
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -16,17 +12,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.History
@@ -36,14 +33,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -53,16 +48,16 @@ import com.minipai.article.R
 import com.minipai.article.core.ui.adaptive.AppLayoutType
 import com.minipai.article.core.ui.adaptive.rememberAppLayoutType
 import com.minipai.article.core.ui.components.BiliSearchBar
-import com.minipai.article.core.ui.components.EmptyState
 import com.minipai.article.core.ui.theme.BiliPink
 
 /**
  * 搜索页主 Composable。
  *
  * 关键设计：
- * 1. 搜索框初始态垂直水平居中（landing）
- * 2. 用户输入后，搜索框动画过渡到顶部（expanded）
- * 3. 自适应：手机竖屏单栏 / 手机横屏+小平板左右分栏 / 平板三栏
+ * 1. landing 态：搜索框**垂直水平居中**，logo 在上、QuickTip + 历史在下
+ * 2. result 态：搜索框动画到顶，下方展示结果列表
+ * 3. 用 `AnimatedContent` 切换两套布局，避免 layout 竞争导致 0 高度崩溃
+ * 4. 宽屏：搜索框视觉居中（max 640dp），下方左右分栏（历史 40% + 结果 60%）
  */
 @Composable
 fun SearchScreen(
@@ -86,8 +81,7 @@ fun SearchScreen(
             AppLayoutType.MEDIUM, AppLayoutType.EXPANDED -> MultiColumnSearchLayout(
                 state = state,
                 viewModel = viewModel,
-                onOpenArticle = onOpenArticle,
-                showResultColumn = layout == AppLayoutType.EXPANDED
+                onOpenArticle = onOpenArticle
             )
         }
     }
@@ -101,111 +95,100 @@ private fun CompactSearchLayout(
     viewModel: SearchViewModel,
     onOpenArticle: (Long) -> Unit
 ) {
+    AnimatedContent(
+        targetState = state.isLanding,
+        transitionSpec = {
+            (fadeIn(animationSpec = tween(220)) +
+                slideInVertically(animationSpec = tween(220)) { if (targetState) -it / 8 else it / 8 })
+                .togetherWith(
+                    fadeOut(animationSpec = tween(180)) +
+                        slideOutVertically(animationSpec = tween(180)) { if (targetState) it / 8 else -it / 8 }
+                )
+        },
+        label = "searchMode"
+    ) { isLanding ->
+        if (isLanding) {
+            LandingLayout(state = state, viewModel = viewModel)
+        } else {
+            ResultLayout(state = state, viewModel = viewModel, onOpenArticle = onOpenArticle)
+        }
+    }
+}
+
+/**
+ * Landing 布局：搜索框视觉居中，logo 在上方，QuickTip + 历史在下方。
+ */
+@Composable
+private fun LandingLayout(
+    state: SearchUiState,
+    viewModel: SearchViewModel
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding()
+            .statusBarsPadding()
+    ) {
+        // 顶部 Logo
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 80.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Logo()
+        }
+
+        // 居中搜索框
+        BiliSearchBar(
+            query = state.query,
+            onQueryChange = viewModel::onQueryChange,
+            onSubmit = { viewModel.onSubmit(state.query) },
+            onClear = { viewModel.onQueryChange("") },
+            expanded = false,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(horizontal = 32.dp)
+                .fillMaxWidth()
+        )
+
+        // 底部：QuickTip + 历史面板
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+        ) {
+            QuickTip()
+            Spacer(Modifier.height(16.dp))
+            SearchHistoryPanel(
+                history = state.history,
+                onHistoryClick = viewModel::onHistoryClick,
+                onHistoryLongClick = viewModel::deleteHistory,
+                onClearAll = viewModel::clearHistory,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 340.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Result 布局：搜索框顶部 + 下方结果区。
+ */
+@Composable
+private fun ResultLayout(
+    state: SearchUiState,
+    viewModel: SearchViewModel,
+    onOpenArticle: (Long) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .imePadding()
             .statusBarsPadding()
     ) {
-        // 顶部搜索框区
-        AnimatedSearchHeader(state = state, viewModel = viewModel)
-
-        // 主体内容：历史 / 结果 / 空态
-        // Column 内两个 AnimatedVisibility 通过 weight=1f 平分空间，可见的那一个占满
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 4.dp)
-        ) {
-            AnimatedVisibility(
-                visible = state.isLanding,
-                enter = fadeIn(),
-                exit = fadeOut(),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                SearchHistoryPanel(
-                    history = state.history,
-                    onHistoryClick = viewModel::onHistoryClick,
-                    onHistoryLongClick = viewModel::deleteHistory,
-                    onClearAll = viewModel::clearHistory
-                )
-            }
-            AnimatedVisibility(
-                visible = !state.isLanding,
-                enter = fadeIn() + slideInVertically { it / 4 },
-                exit = fadeOut() + slideOutVertically { it / 4 },
-                modifier = Modifier.fillMaxSize()
-            ) {
-                if (state.isSearching) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(
-                            color = BiliPink,
-                            modifier = Modifier.size(36.dp),
-                            strokeWidth = 3.dp
-                        )
-                    }
-                } else {
-                    SearchResultList(
-                        results = state.results,
-                        isLoadingMore = state.isLoadingMore,
-                        hasMore = state.hasMore,
-                        onItemClick = { item -> onOpenArticle(item.id) },
-                        onLoadMore = viewModel::loadMore
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * 搜索框在 landing 态居中，expanded 态顶部。
- */
-@Composable
-private fun AnimatedSearchHeader(
-    state: SearchUiState,
-    viewModel: SearchViewModel
-) {
-    val expanded = state.isResultMode || state.isSearching
-    val topPadding by animateDpAsState(
-        targetValue = if (expanded) 12.dp else 0.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "searchHeaderTop"
-    )
-    val bottomPadding by animateDpAsState(
-        targetValue = if (expanded) 8.dp else 0.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "searchHeaderBottom"
-    )
-
-    // landing 态：占据整个屏幕高度，搜索框居中
-    if (!expanded) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 80.dp),
-            contentAlignment = Alignment.TopCenter
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(32.dp)
-            ) {
-                Logo()
-                BiliSearchBar(
-                    query = state.query,
-                    onQueryChange = viewModel::onQueryChange,
-                    onSubmit = { viewModel.onSubmit(state.query) },
-                    onClear = { viewModel.onQueryChange("") },
-                    expanded = false,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 32.dp)
-                )
-                QuickTip()
-            }
-        }
-    } else {
-        // expanded 态：搜索框在顶部
         BiliSearchBar(
             query = state.query,
             onQueryChange = viewModel::onQueryChange,
@@ -214,9 +197,27 @@ private fun AnimatedSearchHeader(
             expanded = true,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = topPadding, bottom = bottomPadding, start = 8.dp, end = 8.dp)
-                .statusBarsPadding()
+                .padding(horizontal = 8.dp, vertical = 8.dp)
         )
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (state.isSearching) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(
+                        color = BiliPink,
+                        modifier = Modifier.size(36.dp),
+                        strokeWidth = 3.dp
+                    )
+                }
+            } else {
+                SearchResultList(
+                    results = state.results,
+                    isLoadingMore = state.isLoadingMore,
+                    hasMore = state.hasMore,
+                    onItemClick = { item -> onOpenArticle(item.id) },
+                    onLoadMore = viewModel::loadMore
+                )
+            }
+        }
     }
 }
 
@@ -234,7 +235,7 @@ private fun Logo() {
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "📖",
+                text = "\uD83D\uDCD6",
                 style = MaterialTheme.typography.displayMedium
             )
         }
@@ -255,10 +256,13 @@ private fun Logo() {
 @Composable
 private fun QuickTip() {
     Text(
-        text = "💡 试试搜：机械键盘、独立游戏、考研",
+        text = "\uD83D\uDCA1 试试搜：机械键盘、独立游戏、考研",
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = TextAlign.Center
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp, vertical = 8.dp)
     )
 }
 
@@ -268,20 +272,20 @@ private fun QuickTip() {
 private fun MultiColumnSearchLayout(
     state: SearchUiState,
     viewModel: SearchViewModel,
-    onOpenArticle: (Long) -> Unit,
-    showResultColumn: Boolean
+    onOpenArticle: (Long) -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxSize()
+            .imePadding()
             .statusBarsPadding()
     ) {
-        // 左侧：搜索框 + 历史（30%）
-        Column(
+        // 顶部：搜索框视觉居中（最大 640dp）
+        Box(
             modifier = Modifier
-                .width(320.dp)
-                .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 16.dp)
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+            contentAlignment = Alignment.Center
         ) {
             BiliSearchBar(
                 query = state.query,
@@ -289,48 +293,62 @@ private fun MultiColumnSearchLayout(
                 onSubmit = { viewModel.onSubmit(state.query) },
                 onClear = { viewModel.onQueryChange("") },
                 expanded = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(16.dp))
-            SearchHistoryPanel(
-                history = state.history,
-                onHistoryClick = viewModel::onHistoryClick,
-                onHistoryLongClick = viewModel::deleteHistory,
-                onClearAll = viewModel::clearHistory
+                modifier = Modifier
+                    .widthIn(max = 640.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
             )
         }
-        // 分割线
-        Box(
-            modifier = Modifier
-                .width(0.5.dp)
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(
+            thickness = 0.5.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
         )
-        // 右侧：结果列表（70%）
-        Box(modifier = Modifier.weight(1f).fillMaxSize()) {
-            if (state.isSearching) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(
-                        color = BiliPink,
-                        modifier = Modifier.size(36.dp),
-                        strokeWidth = 3.dp
-                    )
-                }
-            } else if (state.query.isNotBlank()) {
-                SearchResultList(
-                    results = state.results,
-                    isLoadingMore = state.isLoadingMore,
-                    hasMore = state.hasMore,
-                    onItemClick = { item -> onOpenArticle(item.id) },
-                    onLoadMore = viewModel::loadMore
+
+        // 主体：左历史 40% + 右结果 60%
+        Row(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier
+                .weight(0.4f)
+                .fillMaxHeight()
+            ) {
+                SearchHistoryPanel(
+                    history = state.history,
+                    onHistoryClick = viewModel::onHistoryClick,
+                    onHistoryLongClick = viewModel::deleteHistory,
+                    onClearAll = viewModel::clearHistory
                 )
-            } else {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "输入关键词开始搜索",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            }
+            VerticalDivider(
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+            Box(modifier = Modifier
+                .weight(0.6f)
+                .fillMaxHeight()
+            ) {
+                if (state.isSearching) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            color = BiliPink,
+                            modifier = Modifier.size(36.dp),
+                            strokeWidth = 3.dp
+                        )
+                    }
+                } else if (state.query.isNotBlank() || state.results.isNotEmpty()) {
+                    SearchResultList(
+                        results = state.results,
+                        isLoadingMore = state.isLoadingMore,
+                        hasMore = state.hasMore,
+                        onItemClick = { item -> onOpenArticle(item.id) },
+                        onLoadMore = viewModel::loadMore
                     )
+                } else {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "输入关键词开始搜索",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
