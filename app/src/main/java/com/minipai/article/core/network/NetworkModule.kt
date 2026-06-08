@@ -9,6 +9,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import okhttp3.MediaType.Companion.toMediaType
 import java.util.concurrent.TimeUnit
 
 /**
@@ -80,7 +81,7 @@ object NetworkModule {
         Retrofit.Builder()
             .baseUrl("https://api.bilibili.com/")
             .client(okHttpClient)
-            .addConverterFactory(json.asConverterFactory(okhttp3.MediaType.get("application/json")))
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
     }
 

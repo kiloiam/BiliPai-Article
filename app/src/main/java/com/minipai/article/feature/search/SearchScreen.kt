@@ -111,8 +111,8 @@ private fun CompactSearchLayout(
         AnimatedSearchHeader(state = state, viewModel = viewModel)
 
         // 主体内容：历史 / 结果 / 空态
-        // 用 Column 让 AnimatedVisibility 自动用 ColumnScope 重载
-        Box(
+        // Column 内两个 AnimatedVisibility 通过 weight=1f 平分空间，可见的那一个占满
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = 4.dp)

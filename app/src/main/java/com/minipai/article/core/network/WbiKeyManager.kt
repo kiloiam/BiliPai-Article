@@ -8,6 +8,7 @@ import kotlinx.coroutines.sync.withLock
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import retrofit2.http.GET
+import okhttp3.MediaType.Companion.toMediaType
 import kotlinx.serialization.json.Json
 
 private const val TAG = "WbiKeyManager"
@@ -32,7 +33,7 @@ private val navJson = Json {
 private val navRetrofit: Retrofit by lazy {
     Retrofit.Builder()
         .baseUrl("https://api.bilibili.com/")
-        .addConverterFactory(navJson.asConverterFactory(okhttp3.MediaType.get("application/json")))
+        .addConverterFactory(navJson.asConverterFactory("application/json".toMediaType()))
         .build()
 }
 
