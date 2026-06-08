@@ -25,7 +25,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "app_database"
                 )
                     // 无登录态、无生产数据，schema 变更直接清空
-                    .fallbackToDestructiveMigration(dropAllTables = true)
+                    .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }
             }

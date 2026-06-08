@@ -21,8 +21,6 @@ class AppSessionCookieJar(context: Context) : CookieJar {
             .value(buvid3)
             .domain(".bilibili.com")
             .path("/")
-            .httpOnly(false)
-            .secure(false)
             .build()
     }
 

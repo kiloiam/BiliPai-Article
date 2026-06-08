@@ -111,6 +111,7 @@ private fun CompactSearchLayout(
         AnimatedSearchHeader(state = state, viewModel = viewModel)
 
         // 主体内容：历史 / 结果 / 空态
+        // 用 Column 让 AnimatedVisibility 自动用 ColumnScope 重载
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -119,7 +120,8 @@ private fun CompactSearchLayout(
             AnimatedVisibility(
                 visible = state.isLanding,
                 enter = fadeIn(),
-                exit = fadeOut()
+                exit = fadeOut(),
+                modifier = Modifier.fillMaxSize()
             ) {
                 SearchHistoryPanel(
                     history = state.history,
@@ -131,7 +133,8 @@ private fun CompactSearchLayout(
             AnimatedVisibility(
                 visible = !state.isLanding,
                 enter = fadeIn() + slideInVertically { it / 4 },
-                exit = fadeOut() + slideOutVertically { it / 4 }
+                exit = fadeOut() + slideOutVertically { it / 4 },
+                modifier = Modifier.fillMaxSize()
             ) {
                 if (state.isSearching) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
