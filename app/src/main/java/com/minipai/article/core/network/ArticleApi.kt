@@ -1,13 +1,16 @@
 package com.minipai.article.core.network
 
+import com.minipai.article.core.network.model.ArticleViewResponse
 import retrofit2.http.GET
-import retrofit2.http.QueryMap
+import retrofit2.http.Query
 
 /**
- * 专栏文章详情 API（备用）。
- * 当前极简版阅读走 WebView，但保留此接口供未来扩展（自建 HTML 渲染等）。
+ * 专栏文章详情 API (`x/article/view`)。
+ *
+ * 该接口不在 `/wbi/` 路径下，不需要 WBI 签名。
+ * 现有 `AppSessionCookieJar` 已自动注入 buvid3 cookie。
  */
 interface ArticleApi {
     @GET("x/article/view")
-    suspend fun getArticleView(@QueryMap params: Map<String, String>): Unit
+    suspend fun getArticleView(@Query("id") id: Long): ArticleViewResponse
 }

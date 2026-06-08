@@ -48,7 +48,3 @@
 -keep class kotlin.reflect.** { *; }
 -dontwarn kotlin.reflect.jvm.internal.**
 
-# Keep WebView bridge classes (reflective access by Android)
--keepclassmembers class * extends android.webkit.WebViewClient { *; }
--keepclassmembers class * extends android.webkit.WebChromeClient { *; }
-

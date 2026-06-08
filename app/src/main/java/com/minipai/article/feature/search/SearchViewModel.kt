@@ -100,9 +100,8 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
         if (trimmed.isEmpty()) return
 
         searchJob?.cancel()
+        // 历史记录统一在 executeSearch onSuccess 写，避免与防抖路径双写
         viewModelScope.launch(coroutineExceptionHandler) {
-            // 同步写历史（不等网络结果，先记录这次搜索行为）
-            repository.recordSearch(trimmed)
             executeSearch(trimmed, page = 1, append = false)
         }
     }
@@ -186,6 +185,14 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
 
         result.fold(
             onSuccess = { data ->
+                // 替换式搜索（防抖触发 / 回车 / 点历史）成功后记入历史。
+                // recordSearch 是幂等的：相同 keyword 走 INSERT OR REPLACE + incrementCount，
+                // 时间戳会被刷新到最新，符合"点过的历史置顶"的直觉。
+                // loadMore（append=true）不重复记。
+                if (!append) {
+                    runCatching { repository.recordSearch(keyword) }
+                        .onFailure { Log.w(TAG, "recordSearch failed", it) }
+                }
                 val newList = if (append) _uiState.value.results + data.result.orEmpty()
                               else data.result.orEmpty()
                 val totalPages = data.numPages.takeIf { it > 0 } ?: 1
