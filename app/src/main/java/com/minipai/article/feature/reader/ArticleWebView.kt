@@ -86,11 +86,12 @@ fun ArticleWebView(
             }
         },
         update = { webView ->
-            // 字号变化时重新注入 CSS
+            // 字号变化时重新注入 CSS + 运行 DOM 清扫
             val cssWithFont = css.replace("/*FONT_SIZE_TOKEN*/", "${fontSize}px")
             webView.evaluateJavascript(
                 """
                 (function() {
+                    // 1) 注入/更新样式
                     var style = document.getElementById('bili-reader-style');
                     if (!style) {
                         style = document.createElement('style');
@@ -98,6 +99,37 @@ fun ArticleWebView(
                         document.head.appendChild(style);
                     }
                     style.innerHTML = ${cssToJsString(cssWithFont)};
+
+                    // 2) DOM 兜底清扫：
+                    //    B 站登录墙常常是 React/Vue 异步挂上来的，CSS 选择器
+                    //    可能漏掉新版类名。这里多打几枪覆盖渲染窗口。
+                    function sweep() {
+                        // 解锁 body 滚动
+                        document.documentElement.style.overflow = '';
+                        document.body.style.overflow = '';
+                        document.body.classList.remove('no-scroll', 'modal-open', 'dialog-open');
+
+                        // 摘掉所有 fixed/absolute 的全屏 mask
+                        var nodes = document.querySelectorAll(
+                            '[class*="mask"],[class*="modal"],[class*="dialog"],' +
+                            '[class*="popup"],[class*="overlay"],[class*="login"]'
+                        );
+                        nodes.forEach(function(n) {
+                            // 只干掉占满屏幕（>80% viewport）的层，避免误伤正文
+                            var r = n.getBoundingClientRect();
+                            if (r.width > window.innerWidth * 0.6 && r.height > window.innerHeight * 0.4) {
+                                n.style.display = 'none';
+                            }
+                            // 类名里含 login 的一律删
+                            if (/login|signin|sign-in/i.test(n.className || '')) {
+                                n.style.display = 'none';
+                            }
+                        });
+                    }
+                    sweep();
+                    setTimeout(sweep, 500);
+                    setTimeout(sweep, 1500);
+                    setTimeout(sweep, 3000);
                 })();
                 """.trimIndent(),
                 null

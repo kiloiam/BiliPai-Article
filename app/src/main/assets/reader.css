@@ -1,27 +1,77 @@
-/* BiliPai 专栏阅读净化 CSS
+/* BiliPai 专栏阅读净化 CSS（reader-mode 强化版 v2）
  *
- * 加载到 https://www.bilibili.com/read/cv{id} 页面，
- * 隐藏 B 站所有 chrome（顶栏、侧栏、底栏、登录弹窗、推荐列表），
- * 仅保留正文区域。
+ * 目标：把 https://www.bilibili.com/read/cv{id} 净化成沉浸式 app 阅读体验。
+ * - 隐藏所有非正文 chrome（顶栏 / 侧栏 / 底栏 / 推荐 / 评论 / banner / 二维码 / app 下载）
+ * - 拆掉登录弹窗 + 解锁 body 滚动（B 站未登录时常推 modal）
+ * - 正文限宽 + 大行距 + 阅读字体
  *
- * 字号由 ArticleWebView 通过 JS 注入时会替换 FONT_SIZE_TOKEN。
- * 默认 17px。
+ * 字号由 ArticleWebView 通过 JS 注入时会替换 FONT_SIZE_TOKEN。默认 17px。
  */
 
-/* === 隐藏 B 站所有 chrome === */
+/* ============================================================
+ * 1) 解锁 body 滚动 + 拆除 modal-mask
+ *    B 站未登录会:
+ *      a) body.no-scroll 或内联 style="overflow:hidden"
+ *      b) 全屏 .bili-mini-mask / .modal-mask 盖在正文上
+ * ============================================================ */
+html, body {
+  overflow: auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  position: static !important;
+  height: auto !important;
+  max-height: none !important;
+  padding-right: 0 !important;
+}
+
+body.no-scroll, body.modal-open, body.dialog-open {
+  overflow: auto !important;
+  position: static !important;
+}
+
+/* ============================================================
+ * 2) 登录墙 / 弹窗类（按经验 + 通配兜底）
+ * ============================================================ */
+.unlogin-popover, .login-tip, .login-panel, .login-popup,
+.bili-mini-mask, .bili-mask, .modal-mask, .v-modal,
+.bili-dialog, .bili-dialog__wrapper, .bili-dialog-mask,
+.el-dialog__wrapper, .el-overlay, .el-message-box,
+.unlogin-bar, .un-login, .signin-wrapper,
+[class*="login-popup"], [class*="popup-login"],
+[class*="login-mask"], [class*="login-modal"],
+[class*="login-dialog"], [class*="signin-popup"],
+[role="dialog"], [class*="modal-overlay"],
+[class*="bili-popup"], .common-popover, .popup-wrap {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+  height: 0 !important;
+  width: 0 !important;
+}
+
+/* ============================================================
+ * 3) B 站站点 chrome（顶栏 / 侧栏 / 底栏 / 推荐 / 评论）
+ * ============================================================ */
 .header, .nav-bar, .sidebar, .right-sidebar, .toolbar,
-.bili-header, .bili-footer, .login-tip, .app-download,
+.bili-header, .bili-footer, .app-download,
 .recommend-list, .comment-wrapper, .fixed-toolbar,
 .article-breadcrumb, .article-footer, .qr-code,
-.bili-read-toolbar, .bili-comments,
+.bili-read-toolbar, .bili-comments, .bili-comment,
 #bili-header-container, .international-footer,
 .article-records, .bili-read-recom, .read-article-banner,
 .mini-header, .bili-mini-header, .bili-read-popup,
 #banner, .bili-banner, .bili-read-banner,
-.fixed-side, .right-aux, .article-side,
-[class*="app-"]:not([class*="content"]):not([class*="article"]),
-[class*="popup-"], [class*="modal-"], [class*="qr-"],
-#app > div:not(#article-detail) {
+.fixed-side, .right-aux, .article-side, .article-action,
+.article-up-info, .up-info, .author-card,
+.bili-read-feed, .feed-card, .read-feed,
+.cookies-tip, .cookie-banner, .gdpr-banner,
+[class*="cookie-"], [class*="-recommend"], [class*="-related"],
+[class*="-comment"], [class*="comment-"],
+[class*="bili-header"], [class*="bili-footer"],
+[class*="qr-"], [class*="-qrcode"],
+[class*="app-download"], [class*="download-app"] {
   display: none !important;
   visibility: hidden !important;
   height: 0 !important;
@@ -30,7 +80,19 @@
   pointer-events: none !important;
 }
 
-/* === 全局重置 === */
+/* ============================================================
+ * 4) 兜底：所有 position:fixed 的非正文层（B 站常用 fixed 推弹窗）
+ *    白名单：保留 .article-content 内部任何 fixed 元素
+ * ============================================================ */
+body > div[class*="fixed"],
+body > div[class*="floating"],
+body > div[class*="popover"]:not(.article-content *) {
+  display: none !important;
+}
+
+/* ============================================================
+ * 5) 全局重置
+ * ============================================================ */
 html, body {
   background: #ffffff !important;
   margin: 0 !important;
@@ -41,43 +103,49 @@ html, body {
 
 body {
   font-size: /*FONT_SIZE_TOKEN*/ !important;
-  line-height: 1.75 !important;
+  line-height: 1.8 !important;
   color: #1a1a1a !important;
 }
 
-/* === 净化顶部 padding（顶栏被隐藏后留出空白） === */
+/* ============================================================
+ * 6) 正文容器：居中 + 限宽 + 顶部留白给我们自己的 toolbar
+ * ============================================================ */
 #app, .article-detail, .article-holder, .article-content {
   padding-top: 0 !important;
   margin-top: 0 !important;
 }
 
-/* === 正文容器居中 + 限制最大宽度 === */
-.article-holder, .article-content, .article-detail {
-  max-width: 720px !important;
+.article-holder, .article-content, .article-detail,
+[id*="article"], [class*="article-main"], [class*="article-body"] {
+  max-width: 680px !important;
   margin: 0 auto !important;
-  padding: 12px 16px 32px !important;
+  padding: 64px 20px 48px !important;  /* top 留 64dp 给我们的 toolbar */
   background: #ffffff !important;
 }
 
-/* === 标题 === */
-.article-title, h1.article-title {
-  font-size: 24px !important;
-  font-weight: 600 !important;
+/* ============================================================
+ * 7) 标题 / 作者
+ * ============================================================ */
+.article-title, h1.article-title, h1 {
+  font-size: 26px !important;
+  font-weight: 700 !important;
   line-height: 1.4 !important;
   color: #1a1a1a !important;
-  margin: 16px 0 12px !important;
+  margin: 0 0 16px !important;
   padding: 0 !important;
 }
 
 .article-meta, .author-info, .bili-read-author {
   font-size: 13px !important;
   color: #999 !important;
-  margin-bottom: 24px !important;
+  margin-bottom: 28px !important;
   padding: 8px 0 !important;
   border-bottom: 1px solid #eee !important;
 }
 
-/* === 正文段落 === */
+/* ============================================================
+ * 8) 正文段落
+ * ============================================================ */
 .article-content p, .article-content div, .article-content span {
   font-size: inherit !important;
   line-height: inherit !important;
@@ -85,93 +153,90 @@ body {
 }
 
 .article-content p {
-  margin: 0 0 16px !important;
+  margin: 0 0 18px !important;
   text-align: justify !important;
+  word-break: break-word !important;
 }
 
-/* === 图片 === */
-.article-content img, .article-content video {
+/* ============================================================
+ * 9) 图片 / 视频
+ * ============================================================ */
+.article-content img, .article-content video,
+img.opus-pic, img[class*="article-img"] {
   max-width: 100% !important;
   height: auto !important;
   display: block !important;
-  margin: 16px auto !important;
+  margin: 20px auto !important;
   border-radius: 8px !important;
 }
 
-/* === 引用 === */
-.article-content blockquote {
+/* ============================================================
+ * 10) 引用 / 代码 / 链接 / 标题层级 / 列表 / 表格
+ * ============================================================ */
+.article-content blockquote, blockquote {
   border-left: 4px solid #fb7299 !important;
   background: #fff5f8 !important;
   padding: 12px 16px !important;
-  margin: 16px 0 !important;
+  margin: 18px 0 !important;
   border-radius: 0 8px 8px 0 !important;
   color: #555 !important;
 }
 
-/* === 代码块 === */
-.article-content pre, .article-content code {
+.article-content pre, .article-content code, pre, code {
   background: #f5f5f5 !important;
   border-radius: 6px !important;
   font-family: "SFMono-Regular", Consolas, Menlo, monospace !important;
 }
 
-.article-content pre {
+.article-content pre, pre {
   padding: 12px !important;
   overflow-x: auto !important;
-  margin: 16px 0 !important;
+  margin: 18px 0 !important;
 }
 
-.article-content code {
+.article-content code, code {
   padding: 2px 6px !important;
   font-size: 14px !important;
 }
 
-/* === 链接 === */
-.article-content a {
+.article-content a, a {
   color: #00aeec !important;
   text-decoration: none !important;
 }
 
-/* === 标题层级 === */
-.article-content h2, .article-content h3, .article-content h4 {
+.article-content h2, .article-content h3, .article-content h4,
+h2, h3, h4 {
   font-weight: 600 !important;
-  margin: 24px 0 12px !important;
+  margin: 28px 0 12px !important;
   color: #1a1a1a !important;
 }
 
-.article-content h2 { font-size: 20px !important; }
-.article-content h3 { font-size: 18px !important; }
-.article-content h4 { font-size: 16px !important; }
+.article-content h2, h2 { font-size: 20px !important; }
+.article-content h3, h3 { font-size: 18px !important; }
+.article-content h4, h4 { font-size: 16px !important; }
 
-/* === 列表 === */
-.article-content ul, .article-content ol {
-  padding-left: 24px !important;
-  margin: 12px 0 !important;
+.article-content ul, .article-content ol, ul, ol {
+  padding-left: 26px !important;
+  margin: 14px 0 !important;
 }
 
-.article-content li {
+.article-content li, li {
   margin: 6px 0 !important;
 }
 
-/* === 表格 === */
-.article-content table {
+.article-content table, table {
   border-collapse: collapse !important;
   width: 100% !important;
-  margin: 16px 0 !important;
+  margin: 18px 0 !important;
 }
 
-.article-content th, .article-content td {
+.article-content th, .article-content td, th, td {
   border: 1px solid #eee !important;
   padding: 8px 12px !important;
   text-align: left !important;
 }
 
-.article-content th {
+.article-content th, th {
   background: #fafafa !important;
   font-weight: 600 !important;
-}
-
-/* === 隐藏 cookies 弹窗 === */
-.cookies-tip, .cookie-banner, .gdpr-banner, [class*="cookie-"] {
-  display: none !important;
 }
