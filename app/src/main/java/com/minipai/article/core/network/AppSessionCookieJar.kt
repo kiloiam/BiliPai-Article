@@ -19,7 +19,9 @@ class AppSessionCookieJar(context: Context) : CookieJar {
         Cookie.Builder()
             .name("buvid3")
             .value(buvid3)
-            .domain(".bilibili.com")
+            // OkHttp 4.x 的 domain() 不接受前导点，但默认 host-only=false
+            // 等价匹配所有 *.bilibili.com 子域，行为与传统 ".bilibili.com" 一致
+            .domain("bilibili.com")
             .path("/")
             .build()
     }
