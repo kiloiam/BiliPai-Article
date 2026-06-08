@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- 启动主题：使用 AppCompat 主题，等 Compose 接管后用 MaterialTheme -->
+    <style name="Theme.BiliPaiArticle" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:statusBarColor" tools:targetApi="l">@color/bilibili_pink</item>
+        <item name="android:navigationBarColor">@color/white</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+    </style>
+</resources>

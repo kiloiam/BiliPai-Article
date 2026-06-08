@@ -1,0 +1,24 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 抽象的"专栏"图标：书本 + 文字线条 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,32 L78,32 L78,76 L30,76 Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="0" />
+    <path
+        android:fillColor="#FB7299"
+        android:pathData="M34,38 L74,38 L74,42 L34,42 Z" />
+    <path
+        android:fillColor="#FB7299"
+        android:pathData="M34,46 L74,46 L74,50 L34,50 Z" />
+    <path
+        android:fillColor="#FB7299"
+        android:pathData="M34,54 L60,54 L60,58 L34,58 Z" />
+    <path
+        android:fillColor="#FB7299"
+        android:pathData="M34,62 L66,62 L66,66 L34,66 Z" />
+</vector>

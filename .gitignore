@@ -1,0 +1,23 @@
+# Build outputs
+build/
+.gradle/
+local.properties
+*.apk
+*.aab
+*.aar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Captures
+captures/
+
+# Logs
+*.log
+
+# Gradle wrapper jar will be downloaded by `gradle wrapper` or CI
+# If you have it locally, uncomment to ignore local differences:
+# gradle/wrapper/gradle-wrapper.jar
