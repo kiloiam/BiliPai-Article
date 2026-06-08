@@ -1,9 +1,11 @@
 package com.minipai.article.feature.search
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.minipai.article.data.SearchRepository
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -35,6 +37,22 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     private var searchJob: Job? = null
     private var activeSessionId: Long = 0L
 
+    /**
+     * viewModelScope 默认用 SupervisorJob + Main.immediate，
+     * 但子协程里的未捕获异常依然会通过 Thread.UncaughtExceptionHandler 上抛导致进程崩溃。
+     * 这里挂一个 CoroutineExceptionHandler 兜底，把异常写进 logcat 后转为 error state。
+     */
+    private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Log.e(TAG, "Coroutine crashed", throwable)
+        _uiState.update {
+            it.copy(
+                isSearching = false,
+                isLoadingMore = false,
+                error = throwable.message ?: "未知错误"
+            )
+        }
+    }
+
     init {
         observeHistory()
     }
@@ -47,26 +65,31 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
      * - 有内容 → 延迟 300ms 触发搜索
      */
     fun onQueryChange(keyword: String) {
-        _uiState.update { it.copy(query = keyword, error = null) }
+        Log.d(TAG, "onQueryChange: keyword='$keyword'")
+        runCatching {
+            _uiState.update { it.copy(query = keyword, error = null) }
+        }.onFailure { Log.e(TAG, "State update failed in onQueryChange", it) }
 
-        searchJob?.cancel()
-        if (keyword.isBlank()) {
-            _uiState.update {
-                it.copy(
-                    results = emptyList(),
-                    isSearching = false,
-                    currentPage = 1,
-                    totalPages = 1,
-                    hasMore = false
-                )
+        runCatching {
+            searchJob?.cancel()
+            if (keyword.isBlank()) {
+                _uiState.update {
+                    it.copy(
+                        results = emptyList(),
+                        isSearching = false,
+                        currentPage = 1,
+                        totalPages = 1,
+                        hasMore = false
+                    )
+                }
+                return@runCatching
             }
-            return
-        }
 
-        searchJob = viewModelScope.launch {
-            delay(300)
-            executeSearch(keyword, page = 1, append = false)
-        }
+            searchJob = viewModelScope.launch(coroutineExceptionHandler) {
+                delay(300)
+                executeSearch(keyword, page = 1, append = false)
+            }
+        }.onFailure { Log.e(TAG, "onQueryChange body failed", it) }
     }
 
     /**
@@ -77,7 +100,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
         if (trimmed.isEmpty()) return
 
         searchJob?.cancel()
-        viewModelScope.launch {
+        viewModelScope.launch(coroutineExceptionHandler) {
             // 同步写历史（不等网络结果，先记录这次搜索行为）
             repository.recordSearch(trimmed)
             executeSearch(trimmed, page = 1, append = false)
@@ -90,7 +113,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     fun onHistoryClick(keyword: String) {
         _uiState.update { it.copy(query = keyword, error = null) }
         searchJob?.cancel()
-        searchJob = viewModelScope.launch {
+        searchJob = viewModelScope.launch(coroutineExceptionHandler) {
             executeSearch(keyword, page = 1, append = false)
         }
     }
@@ -101,7 +124,7 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     fun loadMore() {
         val s = _uiState.value
         if (!s.hasMore || s.isLoadingMore || s.isSearching) return
-        searchJob = viewModelScope.launch {
+        searchJob = viewModelScope.launch(coroutineExceptionHandler) {
             executeSearch(s.query, page = s.currentPage + 1, append = true)
         }
     }
@@ -154,7 +177,9 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
 
-        val result = repository.searchArticle(keyword, page = page)
+        val result = runCatching { repository.searchArticle(keyword, page = page) }
+            .onFailure { Log.e(TAG, "searchArticle threw", it) }
+            .getOrElse { Result.failure(it) }
 
         // 防竞态：如果在请求过程中又触发了新的搜索，丢弃本次结果
         if (sessionId != activeSessionId) return
@@ -187,5 +212,9 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
         )
+    }
+
+    companion object {
+        private const val TAG = "BiliSearchVM"
     }
 }
