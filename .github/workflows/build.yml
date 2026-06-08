@@ -21,13 +21,16 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache: gradle
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      # 注：本仓库未提交 gradle/wrapper/gradle-wrapper.jar（gradlew 脚本）
+      # 由 setup-gradle action 自动下载 gradle 8.10.2 distribution
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
 
       - name: Assemble Debug APK
-        run: ./gradlew :app:assembleDebug --no-daemon
+        run: gradle :app:assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -38,10 +41,14 @@ jobs:
           retention-days: 30
 
       - name: Report APK size
+        if: success()
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           if [ -f "$APK" ]; then
-            SIZE=$(du -h "$APK" | cut -f1)
-            echo "### APK size: $SIZE" >> $GITHUB_STEP_SUMMARY
-            echo "✅ Build succeeded. Download from the **Artifacts** section of this workflow run." >> $GITHUB_STEP_SUMMARY
+            SIZE_BYTES=$(stat -c %s "$APK")
+            SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $SIZE_BYTES/1048576}")
+            echo "### ✅ Build succeeded" >> $GITHUB_STEP_SUMMARY
+            echo "**APK size: ${SIZE_MB} MB** (${SIZE_BYTES} bytes)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Download from the **Artifacts** section of this workflow run." >> $GITHUB_STEP_SUMMARY
           fi
