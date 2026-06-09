@@ -7,8 +7,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -67,7 +65,8 @@ fun BiliSearchBar(
     onClear: () -> Unit,
     expanded: Boolean,
     modifier: Modifier = Modifier,
-    placeholder: String = "搜索 B 站专栏"
+    placeholder: String = "搜索 B 站专栏",
+    compact: Boolean = false
 ) {
     val cornerRadius by animateDpAsState(
         targetValue = if (expanded) 24.dp else 28.dp,
@@ -95,7 +94,7 @@ fun BiliSearchBar(
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 6.dp)
+                .padding(horizontal = if (compact) 12.dp else 12.dp, vertical = if (compact) 2.dp else 6.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -103,14 +102,14 @@ fun BiliSearchBar(
                 imageVector = Icons.Outlined.Search,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(if (compact) 19.dp else 22.dp)
             )
             Spacer(Modifier.width(10.dp))
             Box(modifier = Modifier.weight(1f)) {
                 if (query.isEmpty()) {
                     Text(
                         text = placeholder,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -122,7 +121,7 @@ fun BiliSearchBar(
                         runCatching { onQueryChange(newValue) }
                             .onFailure { Log.e(TAG, "onQueryChange('$newValue') crashed", it) }
                     },
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    textStyle = (if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge).copy(
                         color = MaterialTheme.colorScheme.onSurface
                     ),
                     singleLine = true,
@@ -138,18 +137,23 @@ fun BiliSearchBar(
             }
             AnimatedVisibility(
                 visible = query.isNotEmpty(),
-                enter = fadeIn() + slideInVertically(),
-                exit = fadeOut() + slideOutVertically()
+                enter = fadeIn(),
+                exit = fadeOut()
             ) {
-                IconButton(onClick = {
-                    runCatching { onClear() }
-                        .onFailure { Log.e(TAG, "onClear crashed", it) }
-                }) {
+                Box(
+                    modifier = Modifier
+                        .size(if (compact) 28.dp else 32.dp)
+                        .clickable {
+                            runCatching { onClear() }
+                                .onFailure { Log.e(TAG, "onClear crashed", it) }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
                         imageVector = Icons.Outlined.Close,
                         contentDescription = "清空",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(if (compact) 18.dp else 20.dp)
                     )
                 }
             }

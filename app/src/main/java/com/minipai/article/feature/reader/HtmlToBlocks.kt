@@ -1,5 +1,6 @@
 package com.minipai.article.feature.reader
 
+import com.minipai.article.core.network.normalizeSearchImageUrl
 import com.minipai.article.feature.reader.model.ArticleBlock
 import com.minipai.article.feature.reader.model.TextSpan
 
@@ -90,8 +91,8 @@ object HtmlToBlocks {
                         blocks.add(ArticleBlock.Divider)
                     }
                     "img" -> {
-                        val src = extractAttr(attrs, "src")
-                        if (!src.isNullOrBlank()) {
+                        val src = normalizeSearchImageUrl(extractAttr(attrs, "src").orEmpty())
+                        if (src.isNotBlank()) {
                             flushParagraph()
                             flushList()
                             blocks.add(ArticleBlock.Image(src))

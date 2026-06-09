@@ -193,8 +193,9 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
                     runCatching { repository.recordSearch(keyword) }
                         .onFailure { Log.w(TAG, "recordSearch failed", it) }
                 }
-                val newList = if (append) _uiState.value.results + data.result.orEmpty()
-                              else data.result.orEmpty()
+                val incoming = data.result.orEmpty()
+                val newList = if (append) (_uiState.value.results + incoming).takeLast(MAX_RESULTS)
+                              else incoming.take(MAX_RESULTS)
                 val totalPages = data.numPages.takeIf { it > 0 } ?: 1
                 val hasMore = page < totalPages
                 _uiState.update {
@@ -223,5 +224,6 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
 
     companion object {
         private const val TAG = "BiliSearchVM"
+        private const val MAX_RESULTS = 40
     }
 }

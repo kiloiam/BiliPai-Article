@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -101,17 +102,14 @@ fun ArticleScreen(
             }
 
             // 顶部 toolbar
-            Column(
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding()
-                    .align(Alignment.TopCenter)
+                    .align(Alignment.TopCenter),
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 2.dp
             ) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                    shadowElevation = 2.dp
-                ) {
+                Column(modifier = Modifier.statusBarsPadding()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -198,8 +196,13 @@ private fun ErrorView(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "\uD83D\uDE31", style = MaterialTheme.typography.displayLarge)
-        Spacer(Modifier.height(16.dp))
+        Text(
+            text = "BiliPai",
+            style = MaterialTheme.typography.labelLarge,
+            color = BiliPink,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(12.dp))
         Text(
             text = stringResource(R.string.reader_failed),
             style = MaterialTheme.typography.titleLarge,

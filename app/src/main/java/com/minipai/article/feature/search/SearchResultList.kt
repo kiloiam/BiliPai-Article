@@ -31,11 +31,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.size.Precision
 import com.minipai.article.R
 import com.minipai.article.core.network.model.SearchArticleItem
 import com.minipai.article.core.ui.components.EmptyState
@@ -72,7 +75,6 @@ fun SearchResultList(
 
     if (results.isEmpty()) {
         EmptyState(
-            emoji = "😶",
             title = stringResource(R.string.search_no_result),
             subtitle = "换个关键词试试",
             modifier = modifier
@@ -147,6 +149,7 @@ private fun ArticleResultCard(
     item: SearchArticleItem,
     onClick: () -> Unit
 ) {
+    val ctx = LocalContext.current
     Surface(
         modifier = Modifier
             .fillMaxWidth(),
@@ -168,8 +171,18 @@ private fun ArticleResultCard(
                 color = MaterialTheme.colorScheme.surfaceVariant
             ) {
                 if (cover != null) {
+                    val req = remember(cover) {
+                        ImageRequest.Builder(ctx)
+                            .data(cover)
+                            .size(144, 96)
+                            .precision(Precision.INEXACT)
+                            .allowHardware(false)
+                            .allowRgb565(true)
+                            .crossfade(false)
+                            .build()
+                    }
                     AsyncImage(
-                        model = cover,
+                        model = req,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()

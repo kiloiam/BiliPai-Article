@@ -6,20 +6,29 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -63,32 +72,23 @@ private fun BiliPaiApp() {
         Scaffold(
             bottomBar = {
                 if (showBottomBar) {
-                    NavigationBar {
-                        NavigationBarItem(
-                            selected = currentRoute == "search",
-                            onClick = {
-                                if (currentRoute != "search") {
-                                    navController.navigate("search") {
-                                        popUpTo("search") { inclusive = true }
-                                    }
+                    CompactBottomBar(
+                        currentRoute = currentRoute,
+                        onSearchClick = {
+                            if (currentRoute != "search") {
+                                navController.navigate("search") {
+                                    popUpTo("search") { inclusive = true }
                                 }
-                            },
-                            icon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                            label = { Text("搜索") }
-                        )
-                        NavigationBarItem(
-                            selected = currentRoute == "me",
-                            onClick = {
-                                if (currentRoute != "me") {
-                                    navController.navigate("me") {
-                                        popUpTo("search")
-                                    }
+                            }
+                        },
+                        onMeClick = {
+                            if (currentRoute != "me") {
+                                navController.navigate("me") {
+                                    popUpTo("search")
                                 }
-                            },
-                            icon = { Icon(Icons.Outlined.History, contentDescription = null) },
-                            label = { Text("我的") }
-                        )
-                    }
+                            }
+                        }
+                    )
                 }
             }
         ) { padding ->
@@ -122,5 +122,71 @@ private fun BiliPaiApp() {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CompactBottomBar(
+    currentRoute: String?,
+    onSearchClick: () -> Unit,
+    onMeClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 3.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CompactNavItem(
+                selected = currentRoute == "search",
+                icon = Icons.Outlined.Search,
+                label = "搜索",
+                onClick = onSearchClick,
+                modifier = Modifier.weight(1f)
+            )
+            CompactNavItem(
+                selected = currentRoute == "me",
+                icon = Icons.Outlined.History,
+                label = "我的",
+                onClick = onMeClick,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun CompactNavItem(
+    selected: Boolean,
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    Column(
+        modifier = modifier
+            .height(60.dp)
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = color,
+            modifier = Modifier.size(21.dp)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = color
+        )
     }
 }

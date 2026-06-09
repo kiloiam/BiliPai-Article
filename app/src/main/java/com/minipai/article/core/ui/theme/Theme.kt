@@ -5,8 +5,6 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -58,26 +56,13 @@ private val DarkColors = darkColorScheme(
  * BiliPai 专栏 App 主题。
  * - 主色固定为 B 站粉 #FB7299
  * - 跟随系统暗色模式
- * - Android 12+ 启用 dynamicColor 但保留 B 站粉主色覆盖
  */
 @Composable
 fun BiliPaiArticleTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val context = LocalContext.current
     val colorScheme = when {
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            // Android 12+ 优先用 dynamicColor（用户壁纸色），但 primary 仍固定为 B 站粉
-            val dynamic = if (darkTheme) dynamicDarkColorScheme(context)
-                         else dynamicLightColorScheme(context)
-            dynamic.copy(
-                primary = BiliPink,
-                onPrimary = Color.White,
-                primaryContainer = if (darkTheme) BiliPinkDark else BiliPinkLight,
-                onPrimaryContainer = if (darkTheme) BiliPinkLight else BiliPinkDark,
-            )
-        }
         darkTheme -> DarkColors
         else -> LightColors
     }

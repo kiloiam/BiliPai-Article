@@ -51,9 +51,8 @@ fun SearchHistoryPanel(
 
     if (history.isEmpty()) {
         EmptyState(
-            emoji = "🔍",
             title = "还没有搜索记录",
-            subtitle = "试试搜点什么吧 👀",
+            subtitle = "试试搜点什么吧",
             modifier = modifier
         )
         return

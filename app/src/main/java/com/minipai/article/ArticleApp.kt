@@ -2,13 +2,12 @@ package com.minipai.article
 
 import android.app.Application
 import android.util.Log
+import coil.ImageLoader
+import coil.ImageLoaderFactory
+import coil.disk.DiskCache
+import coil.memory.MemoryCache
 import com.minipai.article.core.database.AppDatabase
 import com.minipai.article.core.network.NetworkModule
-import com.minipai.article.core.network.WbiKeyManager
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -17,12 +16,9 @@ import java.util.Locale
 /**
  * 应用入口。
  * - 初始化 OkHttp/Retrofit 单例
- * - 异步预热 WBI 密钥（搜索接口必需）
  * - 注册全局未捕获异常 handler：写 logcat + 写文件（不依赖 adb）
  */
-class ArticleApp : Application() {
-
-    val applicationScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+class ArticleApp : Application(), ImageLoaderFactory {
 
     val database: AppDatabase by lazy { AppDatabase.getDatabase(this) }
 
@@ -54,11 +50,23 @@ class ArticleApp : Application() {
 
         // 1) 注入 Context 到 NetworkModule（让 OkHttp cacheDir 可用）
         NetworkModule.init(this)
+    }
 
-        // 2) 后台预热 WBI 密钥（24h TTL 内不会重复请求）
-        applicationScope.launch {
-            runCatching { WbiKeyManager.refreshIfNeeded() }
-        }
+    override fun newImageLoader(): ImageLoader {
+        return ImageLoader.Builder(this)
+            .memoryCache {
+                MemoryCache.Builder(this)
+                    .maxSizeBytes(512 * 1024)
+                    .build()
+            }
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(cacheDir.resolve("image_cache"))
+                    .maxSizeBytes(4L * 1024 * 1024)
+                    .build()
+            }
+            .crossfade(false)
+            .build()
     }
 
     companion object {

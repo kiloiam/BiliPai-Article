@@ -11,6 +11,7 @@ import com.minipai.article.core.database.ArticleReadHistory
 import com.minipai.article.data.ArticleDetail
 import com.minipai.article.data.ArticleReadHistoryRepository
 import com.minipai.article.data.ArticleRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

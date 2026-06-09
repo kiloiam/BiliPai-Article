@@ -1,11 +1,8 @@
 package com.minipai.article.core.ui.adaptive
 
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.window.core.layout.WindowHeightSizeClass
-import androidx.window.core.layout.WindowSizeClass
-import androidx.window.core.layout.WindowWidthSizeClass
+import androidx.compose.ui.platform.LocalConfiguration
 
 /**
  * 应用布局类型。
@@ -22,12 +19,10 @@ enum class AppLayoutType {
 
 @Composable
 fun rememberAppLayoutType(): AppLayoutType {
-    val info = currentWindowAdaptiveInfo()
-    val size = info.windowSizeClass
+    val config = LocalConfiguration.current
     return when {
-        size.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED -> AppLayoutType.EXPANDED
-        size.windowWidthSizeClass == WindowWidthSizeClass.MEDIUM -> AppLayoutType.MEDIUM
-        size.windowHeightSizeClass == WindowHeightSizeClass.COMPACT -> AppLayoutType.MEDIUM // 横屏手机按 MEDIUM 处理
+        config.screenWidthDp >= 840 -> AppLayoutType.EXPANDED
+        config.screenWidthDp >= 600 || config.screenHeightDp < 480 -> AppLayoutType.MEDIUM
         else -> AppLayoutType.COMPACT
     }
 }

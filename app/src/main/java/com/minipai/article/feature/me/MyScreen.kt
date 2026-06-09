@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import coil.size.Precision
 import com.minipai.article.core.database.ArticleReadHistory
 import com.minipai.article.core.ui.components.EmptyState
 
@@ -48,7 +49,7 @@ import com.minipai.article.core.ui.components.EmptyState
  * 「我的」页 — 阅读历史列表。
  * - LazyColumn，封面 96x64 + 右标题/作者/「上次读到 32% · 2 小时前」
  * - 长按单条弹删除菜单
- * - 空态：EmptyState("📚", "还没读过文章", "去搜索看看")
+ * - 空态：EmptyState("还没读过文章", "去搜索看看")
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -65,7 +66,6 @@ fun MyScreen(
     ) {
         if (items.isEmpty()) {
             EmptyState(
-                emoji = "📚",
                 title = "还没读过文章",
                 subtitle = "去搜索看看",
                 modifier = Modifier.fillMaxSize()
@@ -135,7 +135,14 @@ private fun ReadHistoryCard(
             ) {
                 if (!record.coverUrl.isNullOrBlank()) {
                     val req = remember(record.coverUrl) {
-                        ImageRequest.Builder(ctx).data(record.coverUrl).crossfade(true).build()
+                        ImageRequest.Builder(ctx)
+                            .data(record.coverUrl)
+                            .size(144, 96)
+                            .precision(Precision.INEXACT)
+                            .allowHardware(false)
+                            .allowRgb565(true)
+                            .crossfade(false)
+                            .build()
                     }
                     AsyncImage(
                         model = req,

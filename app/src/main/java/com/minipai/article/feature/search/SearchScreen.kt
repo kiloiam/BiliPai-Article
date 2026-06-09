@@ -50,6 +50,11 @@ fun SearchScreen(
         AppLayoutType.COMPACT -> Modifier.fillMaxWidth()
         else -> Modifier.fillMaxWidth().widthIn(max = 720.dp)
     }
+    val searchBarWidth = when (layout) {
+        AppLayoutType.COMPACT -> Modifier.fillMaxWidth()
+        else -> Modifier.fillMaxWidth().widthIn(max = 600.dp)
+    }
+    val isWideResultLayout = layout != AppLayoutType.COMPACT && !state.isLanding
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -74,7 +79,8 @@ fun SearchScreen(
                     onSubmit = { viewModel.onSubmit(state.query) },
                     onClear = { viewModel.onQueryChange("") },
                     expanded = true,
-                    modifier = maxContentWidth
+                    compact = false,
+                    modifier = if (isWideResultLayout) searchBarWidth else maxContentWidth
                 )
             }
             HorizontalDivider(

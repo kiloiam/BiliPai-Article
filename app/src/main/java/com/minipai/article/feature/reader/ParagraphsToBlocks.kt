@@ -1,6 +1,7 @@
 package com.minipai.article.feature.reader
 
 import com.minipai.article.core.network.model.Paragraph
+import com.minipai.article.core.network.normalizeSearchImageUrl
 import com.minipai.article.feature.reader.model.ArticleBlock
 import com.minipai.article.feature.reader.model.TextSpan
 
@@ -24,10 +25,11 @@ object ParagraphsToBlocks {
                     }
                 }
                 2 -> p.pic?.pics?.forEach { item ->
-                    if (item.url.isNotBlank()) {
+                    val url = normalizeSearchImageUrl(item.url)
+                    if (url.isNotBlank()) {
                         out.add(
                             ArticleBlock.Image(
-                                url = item.url,
+                                url = url,
                                 widthPx = item.width.takeIf { it > 0 },
                                 heightPx = item.height.takeIf { it > 0 }
                             )

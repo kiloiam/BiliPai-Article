@@ -40,11 +40,9 @@
 -dontwarn coil.**
 
 # Compose
--keep class androidx.compose.** { *; }
 -keepclassmembers class androidx.compose.runtime.** { *; }
 
-# Kotlin reflection (used by Retrofit)
+# Kotlin metadata
 -keep class kotlin.Metadata { *; }
--keep class kotlin.reflect.** { *; }
 -dontwarn kotlin.reflect.jvm.internal.**
 

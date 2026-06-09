@@ -72,7 +72,6 @@ android {
             freeCompilerArgs.addAll(
                 "-opt-in=kotlin.RequiresOptIn",
                 "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-                "-opt-in=androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi",
                 "-opt-in=androidx.compose.animation.ExperimentalSharedTransitionApi",
                 "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi"
             )
@@ -101,7 +100,6 @@ android {
 dependencies {
     // AndroidX core
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity.compose)
 
     // Lifecycle
@@ -112,11 +110,7 @@ dependencies {
     // Navigation
     implementation(libs.androidx.navigation.compose)
 
-    // Adaptive
-    implementation(libs.androidx.compose.material3.adaptive)
-    implementation(libs.androidx.compose.material3.adaptive.layout)
-    implementation(libs.androidx.compose.material3.adaptive.navigation)
-    implementation(libs.androidx.window)
+    // Adaptive layout uses LocalConfiguration only; avoid extra window/adaptive runtime deps.
 
     // Compose (BOM)
     implementation(platform(libs.androidx.compose.bom))
