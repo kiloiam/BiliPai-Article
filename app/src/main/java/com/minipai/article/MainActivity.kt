@@ -75,9 +75,11 @@ private fun BiliPaiApp() {
                     CompactBottomBar(
                         currentRoute = currentRoute,
                         onSearchClick = {
-                            if (currentRoute != "search") {
-                                navController.navigate("search") {
-                                    popUpTo("search") { inclusive = true }
+                            when {
+                                currentRoute == "search" -> { /* 已在搜索页 */ }
+                                navController.popBackStack("search", inclusive = false) -> { /* 回退保留状态 */ }
+                                else -> {
+                                    navController.navigate("search") { popUpTo("search") { inclusive = true } }
                                 }
                             }
                         },

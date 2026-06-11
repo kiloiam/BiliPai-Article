@@ -2,6 +2,7 @@ package com.minipai.article.core.network
 
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -90,6 +91,9 @@ object NetworkModule {
 
     private var warmedUp = false
 
+    /** 会话预热完成信号。SearchRepository 在发起请求前会等待此信号。 */
+    val warmupReady = CompletableDeferred<Boolean>()
+
     /**
      * 会话预热：先访问 B 站首页建立 Cookie 档案，再拉 nav 建立 API 会话。
      * 冷启动直接搜专栏会被风控判定为爬虫。预热后 CookieJar 中带有完整的
@@ -109,9 +113,11 @@ object NetworkModule {
             // 2) 访问 nav 接口建立 API 会话
             navApi.getNavInfo()
             warmedUp = true
+            warmupReady.complete(true)
             Log.d(TAG, "Warmup complete")
         } catch (e: Exception) {
             Log.w(TAG, "Warmup failed: ${e.message}")
+            warmupReady.complete(false)  // 预热失败不阻塞搜索
         }
     }
 

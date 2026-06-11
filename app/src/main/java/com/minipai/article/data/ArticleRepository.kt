@@ -1,6 +1,7 @@
 package com.minipai.article.data
 
 import com.minipai.article.core.network.NetworkModule
+import com.minipai.article.core.network.WbiKeyManager
 import com.minipai.article.core.network.WbiUtils
 import com.minipai.article.core.network.normalizeSearchImageUrl
 import com.minipai.article.core.network.model.Stats
@@ -62,14 +63,19 @@ class ArticleRepository {
      */
     private suspend fun signWithWbi(params: Map<String, String>): Map<String, String> {
         return try {
-            val navResp = NetworkModule.navApi.getNavInfo()
-            val wbiImg = navResp.data?.wbi_img
-            val imgKey = wbiImg?.img_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
-            val subKey = wbiImg?.sub_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
-            if (imgKey.isNotEmpty() && subKey.isNotEmpty()) {
-                WbiUtils.sign(params, imgKey, subKey)
+            val keys = WbiKeyManager.getWbiKeys().getOrNull()
+            if (keys != null) {
+                WbiUtils.sign(params, keys.first, keys.second, includeRiskFingerprint = true)
             } else {
-                params
+                val navResp = NetworkModule.navApi.getNavInfo()
+                val wbiImg = navResp.data?.wbi_img
+                val imgKey = wbiImg?.img_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
+                val subKey = wbiImg?.sub_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
+                if (imgKey.isNotEmpty() && subKey.isNotEmpty()) {
+                    WbiUtils.sign(params, imgKey, subKey, includeRiskFingerprint = true)
+                } else {
+                    params
+                }
             }
         } catch (e: Exception) {
             params
@@ -79,6 +85,7 @@ class ArticleRepository {
     private fun articleErrorMessage(code: Int, message: String): String {
         return when (code) {
             -412 -> "请求被 B 站拦截，稍后重试或用浏览器打开"
+            -352 -> "请求频率过高（B站风控），请稍后重试"
             else -> message.ifBlank { "加载失败 ($code)" }
         }
     }
