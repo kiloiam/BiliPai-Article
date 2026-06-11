@@ -20,7 +20,7 @@ private const val CACHE_DURATION_MS = 24 * 60 * 60 * 1000L
 private const val PREFRESH_THRESHOLD_MS = 60 * 60 * 1000L
 
 /** 用于拉取 wbi_img 的精简 Retrofit 客户端（无需复用 NetworkModule，避免循环依赖） */
-private interface NavApi {
+private interface WbiNavApi {
     @GET("https://api.bilibili.com/x/web-interface/nav")
     suspend fun getNavInfo(): NavResponse
 }
@@ -38,7 +38,7 @@ private val navRetrofit: Retrofit by lazy {
         .build()
 }
 
-private val navApi: NavApi by lazy { navRetrofit.create(NavApi::class.java) }
+private val navApi: WbiNavApi by lazy { navRetrofit.create(WbiNavApi::class.java) }
 
 /**
  * WBI 签名密钥管理器。
