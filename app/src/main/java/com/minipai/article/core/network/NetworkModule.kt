@@ -70,8 +70,15 @@ object NetworkModule {
             .cookieJar(cookieJar)
             .addInterceptor { chain ->
                 val original = chain.request()
+                val url = original.url
+                val path = url.encodedPath
+                val origin = "https://www.bilibili.com"
                 val builder = original.newBuilder()
                     .header("User-Agent", CHROME_UA)
+                    .header("Origin", origin)
+                if (!path.contains("/wbi/")) {
+                    builder.header("Referer", origin)
+                }
                 chain.proceed(builder.build())
             }
             .build()
