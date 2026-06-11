@@ -7,40 +7,52 @@ import okhttp3.HttpUrl
 import java.util.UUID
 
 /**
- * 极简 CookieJar：
- * - 不登录态，不持久化 SESSDATA
- * - 仅生成并注入 buvid3（B 站强制反爬字段，缺失会触发 412）
- * - 进程内缓存，其他字段透传为空
+ * B 站 CookieJar：
+ * - 不登录态（不持久化 SESSDATA）
+ * - 自动生成并注入 buvid3（B 站强制反爬字段，缺失触发 412）
+ * - 保留服务器返回的非登录 Cookie（b_nut、buvid4、_uuid 等辅助 WBI 风控）
+ * - 进程内缓存，重启后重新生成
  */
 class AppSessionCookieJar(context: Context) : CookieJar {
 
     private val buvid3: String = generateBuvid3()
+    private val serverCookies = mutableListOf<Cookie>()
+
     private val buvid3Cookie: Cookie by lazy {
         Cookie.Builder()
             .name("buvid3")
             .value(buvid3)
-            // OkHttp 4.x 的 domain() 不接受前导点，但默认 host-only=false
-            // 等价匹配所有 *.bilibili.com 子域，行为与传统 ".bilibili.com" 一致
             .domain("bilibili.com")
             .path("/")
             .build()
     }
 
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
-        // 只在调用 *.bilibili.com 时注入 buvid3
-        return if (url.host.endsWith("bilibili.com")) {
-            listOf(buvid3Cookie)
-        } else {
-            emptyList()
+        if (!url.host.endsWith("bilibili.com")) return emptyList()
+        val cookies = mutableListOf(buvid3Cookie)
+        // 附带服务器返回的非登录 cookie（如 b_nut、buvid4、_uuid）
+        val expired = mutableListOf<Cookie>()
+        for (c in serverCookies) {
+            if (c.expiresAt > System.currentTimeMillis()) {
+                if (c.matches(url)) cookies.add(c)
+            } else {
+                expired.add(c)
+            }
         }
+        serverCookies.removeAll(expired)
+        return cookies
     }
 
     override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-        // 不登录态：忽略服务器返回的 session cookie
+        for (c in cookies) {
+            // 跳过登录态 session，只保留辅助反爬 cookie
+            if (c.name in setOf("SESSDATA", "bili_jct", "DedeUserID", "DedeUserID__ckMd5")) continue
+            serverCookies.removeAll { it.name == c.name && it.domain == c.domain }
+            serverCookies.add(c)
+        }
     }
 
     private fun generateBuvid3(): String {
-        // buvid3 = UUID + 时间戳 hex + 随机 16 进制，模拟浏览器生成
         val uuid = UUID.randomUUID().toString().uppercase()
         val timePart = System.currentTimeMillis().toString(16).uppercase()
         val randPart = (1..16).map { "0123456789ABCDEF".random() }.joinToString("")

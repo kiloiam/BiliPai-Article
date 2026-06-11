@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 /**
  * 网络层单例。
  * - OkHttp 注入 Chrome UA + buvid3 cookie（必须，否则返回 412）
- * - 8MB 磁盘缓存
+ * - 32MB 磁盘缓存
  * - WBI 端点跳过 Referer 头（B 站强制）
  */
 object NetworkModule {
@@ -25,7 +25,6 @@ object NetworkModule {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     private const val SEARCH_ORIGIN = "https://search.bilibili.com"
     private const val SEARCH_REFERER = "https://search.bilibili.com/"
-    private const val BILIBILI_ORIGIN = "https://www.bilibili.com"
 
     internal var appContext: Context? = null
         private set
@@ -44,6 +43,7 @@ object NetworkModule {
         AppSessionCookieJar(requireContext())
     }
 
+    /** 暴露给 WbiKeyManager 等内部组件复用（避免裸连 B 站触发风控） */
     val okHttpClient: OkHttpClient by lazy {
         val ctx = requireContext()
         OkHttpClient.Builder()
@@ -51,8 +51,8 @@ object NetworkModule {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
-            .cache(Cache(ctx.cacheDir.resolve("okhttp_cache"), 8L * 1024 * 1024))
-            .connectionPool(ConnectionPool(2, 30, TimeUnit.SECONDS))
+            .cache(Cache(ctx.cacheDir.resolve("okhttp_cache"), 32L * 1024 * 1024))
+            .connectionPool(ConnectionPool(10, 5, TimeUnit.MINUTES))
             .retryOnConnectionFailure(true)
             .followRedirects(true)
             .followSslRedirects(true)
@@ -71,8 +71,6 @@ object NetworkModule {
                     if (!url.encodedPath.contains("/wbi/")) {
                         builder.header("Referer", SEARCH_REFERER)
                     }
-                } else {
-                    builder.header("Referer", BILIBILI_ORIGIN)
                 }
 
                 chain.proceed(builder.build())

@@ -33,6 +33,7 @@ private val navJson = Json {
 private val navRetrofit: Retrofit by lazy {
     Retrofit.Builder()
         .baseUrl("https://api.bilibili.com/")
+        .client(NetworkModule.okHttpClient)  // 复用带 Chrome UA + buvid3 的 client
         .addConverterFactory(navJson.asConverterFactory("application/json".toMediaType()))
         .build()
 }

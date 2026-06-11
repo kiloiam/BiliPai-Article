@@ -101,22 +101,22 @@ fun ArticleScreen(
                 }
             }
 
-            // 顶部 toolbar
+            // 顶部 toolbar（statusBarsPadding 在 Surface 层避免 cutout 遮挡标题）
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .align(Alignment.TopCenter),
                 color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 2.dp
             ) {
-                Column(modifier = Modifier.statusBarsPadding()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .padding(horizontal = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                         IconButton(onClick = onBack) {
                             Icon(
                                 imageVector = Icons.Outlined.ArrowBack,
@@ -176,7 +176,6 @@ fun ArticleScreen(
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
                         }
-                    }
                 }
             }
         }

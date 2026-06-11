@@ -101,7 +101,7 @@ class SearchRepository(
             val keysResult = WbiKeyManager.getWbiKeys()
             val (imgKey, subKey) = keysResult.getOrNull() ?: ("" to "")
             if (imgKey.isNotEmpty() && subKey.isNotEmpty()) {
-                WbiUtils.sign(params, imgKey, subKey)
+                WbiUtils.sign(params, imgKey, subKey, includeRiskFingerprint = true)
             } else {
                 params
             }
@@ -112,7 +112,7 @@ class SearchRepository(
 
     private fun createSearchError(code: Int, message: String): Exception {
         val readable = when (code) {
-            -352 -> "风控校验失败，请稍后重试"
+            -352, 352 -> "风控校验失败，请稍后重试。已启用完整 WBI 签名，如频繁出现可能是网络环境问题。"
             -412 -> "搜索请求被拦截，请稍后重试"
             -400 -> "搜索参数错误"
             -404 -> "搜索接口不存在"
