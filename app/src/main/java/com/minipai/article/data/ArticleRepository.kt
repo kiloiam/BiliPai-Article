@@ -1,6 +1,7 @@
 package com.minipai.article.data
 
 import com.minipai.article.core.network.NetworkModule
+import com.minipai.article.core.network.WbiUtils
 import com.minipai.article.core.network.normalizeSearchImageUrl
 import com.minipai.article.core.network.model.Stats
 import com.minipai.article.feature.reader.HtmlToBlocks
@@ -10,18 +11,23 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * 拉取并解析专栏详情。
+ * 拉取并解析专栏详情（对齐 BiliPai 原版行为）。
  *
- * 正文有 3 种格式冗余,按优先级使用:
- * 1. `opus.content.paragraphs` — 结构化 AST (免解析)
- * 2. `opus.h5_content` — HTML 兜底
- * 3. `content` — 老版 HTML 兜底
+ * - 现在也走 WBI 签名（原版 getArticleDetail 调用了 signWithWbi）
+ * - 传 gaia_source=main_web + web_location=333.976
  */
 class ArticleRepository {
 
     suspend fun loadArticle(cvId: Long): Result<ArticleDetail> = withContext(Dispatchers.IO) {
         runCatching {
-            val resp = NetworkModule.articleApi.getArticleView(cvId)
+            val params = signWithWbi(
+                mapOf(
+                    "id" to cvId.toString(),
+                    "gaia_source" to "main_web",
+                    "web_location" to "333.976"
+                )
+            )
+            val resp = NetworkModule.articleApi.getArticleView(params)
             if (resp.code != 0) {
                 error(articleErrorMessage(resp.code, resp.message))
             }
@@ -50,13 +56,30 @@ class ArticleRepository {
             )
         }
     }
+
+    /**
+     * 实时拉取 WBI 密钥并签名（对齐 BiliPai 原版）。
+     */
+    private suspend fun signWithWbi(params: Map<String, String>): Map<String, String> {
+        return try {
+            val navResp = NetworkModule.navApi.getNavInfo()
+            val wbiImg = navResp.data?.wbi_img
+            val imgKey = wbiImg?.img_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
+            val subKey = wbiImg?.sub_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
+            if (imgKey.isNotEmpty() && subKey.isNotEmpty()) {
+                WbiUtils.sign(params, imgKey, subKey)
+            } else {
+                params
+            }
+        } catch (e: Exception) {
+            params
+        }
+    }
+
     private fun articleErrorMessage(code: Int, message: String): String {
         return when (code) {
-            352 -> "B 站风控校验失败，当前网络或请求频率可能被限制。可以稍后重试，或先用浏览器打开。"
-            509 -> "B 站接口限流了，稍后重试通常会恢复。可以先用浏览器打开阅读。"
-            -352 -> "B 站风控校验失败，稍后重试或用浏览器打开。"
-            -412 -> "请求被 B 站拦截，稍后重试或用浏览器打开。"
-            else -> "加载失败 ($code)${message.takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""}"
+            -412 -> "请求被 B 站拦截，稍后重试或用浏览器打开"
+            else -> message.ifBlank { "加载失败 ($code)" }
         }
     }
 }
