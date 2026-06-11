@@ -72,12 +72,15 @@ object NetworkModule {
                 val original = chain.request()
                 val url = original.url
                 val path = url.encodedPath
-                val origin = "https://www.bilibili.com"
                 val builder = original.newBuilder()
                     .header("User-Agent", CHROME_UA)
-                    .header("Origin", origin)
-                if (!path.contains("/wbi/")) {
-                    builder.header("Referer", origin)
+                // Origin: 已有 @Headers 注解的不覆盖
+                if (original.header("Origin") == null) {
+                    builder.header("Origin", "https://www.bilibili.com")
+                }
+                // WBI 签名路径不设 Referer；已有 @Headers 的不覆盖
+                if (!path.contains("/wbi/") && original.header("Referer") == null) {
+                    builder.header("Referer", "https://www.bilibili.com")
                 }
                 chain.proceed(builder.build())
             }

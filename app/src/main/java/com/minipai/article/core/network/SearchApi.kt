@@ -15,6 +15,7 @@ interface SearchApi {
      * B 站专栏搜索（需 WBI 签名）。
      * URL: x/web-interface/wbi/search/type?search_type=article&keyword=...&page=...&...
      */
+    @Headers("Origin: https://search.bilibili.com")
     @GET("x/web-interface/wbi/search/type")
     suspend fun searchArticle(@QueryMap params: Map<String, String>): SearchArticleResponse
 }
