@@ -50,6 +50,13 @@ class ArticleApp : Application(), ImageLoaderFactory {
 
         // 1) 注入 Context 到 NetworkModule（让 OkHttp cacheDir 可用）
         NetworkModule.init(this)
+
+        // 2) 后台预热 B 站会话（冷启动直搜会被风控拦截）
+        Thread {
+            runCatching {
+                kotlinx.coroutines.runBlocking { NetworkModule.warmup() }
+            }
+        }.start()
     }
 
     override fun newImageLoader(): ImageLoader {

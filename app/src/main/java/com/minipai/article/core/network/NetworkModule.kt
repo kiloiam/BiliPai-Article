@@ -2,12 +2,15 @@ package com.minipai.article.core.network
 
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import com.minipai.article.core.network.model.NavResponse
 import okhttp3.Cache
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
+import okhttp3.Request
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import retrofit2.http.GET
@@ -84,6 +87,33 @@ object NetworkModule {
     val searchApi: SearchApi by lazy { retrofit.create(SearchApi::class.java) }
     val articleApi: ArticleApi by lazy { retrofit.create(ArticleApi::class.java) }
     val navApi: NavApi by lazy { retrofit.create(NavApi::class.java) }
+
+    private var warmedUp = false
+
+    /**
+     * 会话预热：先访问 B 站首页建立 Cookie 档案，再拉 nav 建立 API 会话。
+     * 冷启动直接搜专栏会被风控判定为爬虫。预热后 CookieJar 中带有完整的
+     * buvid3 + buvid4 + b_nut + _uuid 等字段，WBI 签名才有效。
+     */
+    suspend fun warmup() = withContext(Dispatchers.IO) {
+        if (warmedUp) return@withContext
+        try {
+            // 1) 访问 www.bilibili.com 获取浏览器级 Cookie
+            val homeRequest = Request.Builder()
+                .url("https://www.bilibili.com/")
+                .header("User-Agent", CHROME_UA)
+                .build()
+            okHttpClient.newCall(homeRequest).execute().use { resp ->
+                Log.d(TAG, "Warmup homepage: ${resp.code}, cookies=${resp.headers("Set-Cookie").size}")
+            }
+            // 2) 访问 nav 接口建立 API 会话
+            navApi.getNavInfo()
+            warmedUp = true
+            Log.d(TAG, "Warmup complete")
+        } catch (e: Exception) {
+            Log.w(TAG, "Warmup failed: ${e.message}")
+        }
+    }
 
     private fun requireContext(): Context =
         appContext ?: error("NetworkModule.init(context) must be called first")
