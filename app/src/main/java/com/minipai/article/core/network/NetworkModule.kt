@@ -110,8 +110,12 @@ object NetworkModule {
             okHttpClient.newCall(homeRequest).execute().use { resp ->
                 Log.d(TAG, "Warmup homepage: ${resp.code}, cookies=${resp.headers("Set-Cookie").size}")
             }
-            // 2) 访问 nav 接口建立 API 会话
-            navApi.getNavInfo()
+            // 2) 访问 nav 接口建立 API 会话 + 缓存 WBI 密钥
+            val navResp = navApi.getNavInfo()
+            // 同步预热 WbiKeyManager（避免首次搜索/打开专栏时额外请求 nav 触发 352）
+            try {
+                WbiKeyManager.refreshIfNeeded()
+            } catch (_: Exception) { }
             warmedUp = true
             warmupReady.complete(true)
             Log.d(TAG, "Warmup complete")

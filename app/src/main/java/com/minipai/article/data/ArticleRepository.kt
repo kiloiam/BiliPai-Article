@@ -21,6 +21,10 @@ class ArticleRepository {
 
     suspend fun loadArticle(cvId: Long): Result<ArticleDetail> = withContext(Dispatchers.IO) {
         runCatching {
+            // 等待会话预热完成 + WBI 密钥就绪，最多等 5 秒
+            kotlinx.coroutines.withTimeoutOrNull(5000L) {
+                NetworkModule.warmupReady.await()
+            }
             val params = signWithWbi(
                 mapOf(
                     "id" to cvId.toString(),
