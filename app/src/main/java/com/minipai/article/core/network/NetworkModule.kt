@@ -3,20 +3,29 @@ package com.minipai.article.core.network
 import android.content.Context
 import android.util.Log
 import kotlinx.serialization.json.Json
+import com.minipai.article.core.network.model.NavResponse
 import okhttp3.Cache
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import retrofit2.http.GET
 import okhttp3.MediaType.Companion.toMediaType
 import java.util.concurrent.TimeUnit
 
 /**
+ * x/web-interface/nav API（用于拉取 WBI 签名密钥）。
+ */
+interface NavApi {
+    @GET("x/web-interface/nav")
+    suspend fun getNavInfo(): NavResponse
+}
+
+/**
  * 网络层单例。
- * - OkHttp 注入 Chrome UA + buvid3 cookie（必须，否则返回 412）
+ * - OkHttp 注入 Chrome UA + buvid3 cookie（对齐 BiliPai 原版）
  * - 32MB 磁盘缓存
- * - WBI 端点跳过 Referer 头（B 站强制）
  */
 object NetworkModule {
 
@@ -39,9 +48,7 @@ object NetworkModule {
         coerceInputValues = true
     }
 
-    private val cookieJar: AppSessionCookieJar by lazy {
-        AppSessionCookieJar(requireContext())
-    }
+    private val cookieJar: AppSessionCookieJar by lazy { AppSessionCookieJar() }
 
     /** 暴露给 WbiKeyManager 等内部组件复用（避免裸连 B 站触发风控） */
     val okHttpClient: OkHttpClient by lazy {
@@ -59,20 +66,8 @@ object NetworkModule {
             .cookieJar(cookieJar)
             .addInterceptor { chain ->
                 val original = chain.request()
-                val url = original.url
-                val isSearchEndpoint = url.encodedPath.contains("/search/")
-
                 val builder = original.newBuilder()
                     .header("User-Agent", CHROME_UA)
-
-                if (isSearchEndpoint) {
-                    builder.header("Origin", SEARCH_ORIGIN)
-                    // WBI 端点（/x/web-interface/wbi/...）不能带 Referer
-                    if (!url.encodedPath.contains("/wbi/")) {
-                        builder.header("Referer", SEARCH_REFERER)
-                    }
-                }
-
                 chain.proceed(builder.build())
             }
             .build()
@@ -88,6 +83,7 @@ object NetworkModule {
 
     val searchApi: SearchApi by lazy { retrofit.create(SearchApi::class.java) }
     val articleApi: ArticleApi by lazy { retrofit.create(ArticleApi::class.java) }
+    val navApi: NavApi by lazy { retrofit.create(NavApi::class.java) }
 
     private fun requireContext(): Context =
         appContext ?: error("NetworkModule.init(context) must be called first")

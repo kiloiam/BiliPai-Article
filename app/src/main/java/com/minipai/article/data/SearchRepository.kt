@@ -1,10 +1,8 @@
 package com.minipai.article.data
 
-import android.util.Log
 import com.minipai.article.core.database.SearchHistory
 import com.minipai.article.core.database.SearchHistoryDao
 import com.minipai.article.core.network.NetworkModule
-import com.minipai.article.core.network.WbiKeyManager
 import com.minipai.article.core.network.WbiUtils
 import com.minipai.article.core.network.model.SearchArticleData
 import com.minipai.article.core.network.model.SearchArticleItem
@@ -12,12 +10,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * 搜索仓库。
- * 职责：
- * 1) 调用 WbiKeyManager 拿到 img/sub key，调用 WbiUtils.sign 加签
- * 2) 通过 SearchApi.searchArticle 拿数据
- * 3) 把数据类做 cleanupFields（去 <em> 标签、补全 https://）
- * 4) 把 B 站错误码翻译成可读中文
+ * 搜索仓库（对齐 BiliPai 原版 SearchRepository 行为）。
+ *
+ * 关键差异 vs 之前版本：
+ * - WBI 密钥每次搜索都实时拉取（不缓存），避免过期密钥导致空结果
+ * - 不发送风控指纹（原版不传）
+ * - platform=pc（原版 SearchRepository 用的就是这个）
+ * - 失败回退到无签名参数
  */
 class SearchRepository(
     private val historyDao: SearchHistoryDao
@@ -25,12 +24,6 @@ class SearchRepository(
 
     // ============== 搜索 ==============
 
-    /**
-     * 搜索专栏。
-     * @param keyword 关键词
-     * @param page 从 1 开始
-     * @param pageSize 默认 20
-     */
     suspend fun searchArticle(
         keyword: String,
         page: Int = 1,
@@ -42,7 +35,7 @@ class SearchRepository(
                 "search_type" to "article",
                 "page" to page.toString(),
                 "page_size" to pageSize.toString(),
-                "platform" to "web",
+                "platform" to "pc",
                 "web_location" to "1430654",
                 "order" to "totalrank"
             )
@@ -56,9 +49,6 @@ class SearchRepository(
             }
 
             val data = response.data ?: SearchArticleData()
-            if (data.result.isNullOrEmpty()) {
-                Log.w("SearchRepo", "B站返回空结果: keyword='$keyword' code=${response.code}")
-            }
             val cleaned = data.copy(
                 result = data.result?.map { it.cleanupFields() }
             )
@@ -72,10 +62,6 @@ class SearchRepository(
 
     fun observeHistory() = historyDao.getAll()
 
-    /**
-     * 记录一次搜索。
-     * 行为：同名 keyword 自增 count + 更新时间戳；新 keyword 插入新行。
-     */
     suspend fun recordSearch(keyword: String) = withContext(Dispatchers.IO) {
         val trimmed = keyword.trim()
         if (trimmed.isEmpty()) return@withContext
@@ -98,14 +84,17 @@ class SearchRepository(
     // ============== 内部 ==============
 
     /**
-     * 拉 WBI 密钥 + 签名。失败时回退到无签参数（极少数情况下 B 站会放行，但通常 -352）。
+     * 每次搜索实时拉取 WBI 密钥并签名（对齐 BiliPai 原版行为）。
+     * 不做缓存，避免密钥过期引发静默空结果。
      */
     private suspend fun signWithWbi(params: Map<String, String>): Map<String, String> {
         return try {
-            val keysResult = WbiKeyManager.getWbiKeys()
-            val (imgKey, subKey) = keysResult.getOrNull() ?: ("" to "")
+            val navResp = NetworkModule.navApi.getNavInfo()
+            val wbiImg = navResp.data?.wbi_img
+            val imgKey = wbiImg?.img_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
+            val subKey = wbiImg?.sub_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
             if (imgKey.isNotEmpty() && subKey.isNotEmpty()) {
-                WbiUtils.sign(params, imgKey, subKey, includeRiskFingerprint = false)
+                WbiUtils.sign(params, imgKey, subKey)
             } else {
                 params
             }
@@ -116,7 +105,6 @@ class SearchRepository(
 
     private fun createSearchError(code: Int, message: String): Exception {
         val readable = when (code) {
-            -352, 352 -> "风控校验失败，请稍后重试。已启用完整 WBI 签名，如频繁出现可能是网络环境问题。"
             -412 -> "搜索请求被拦截，请稍后重试"
             -400 -> "搜索参数错误"
             -404 -> "搜索接口不存在"

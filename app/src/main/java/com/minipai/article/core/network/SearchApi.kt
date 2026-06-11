@@ -15,8 +15,10 @@ interface SearchApi {
      * B 站专栏搜索（需 WBI 签名）。
      * URL: x/web-interface/wbi/search/type?search_type=article&keyword=...&page=...&...
      */
-    // Origin 保留在注解；Referer 由 NetworkModule 拦截器动态控制（WBI 路径不传 Referer）
-    @Headers("Origin: https://search.bilibili.com")
+    @Headers(
+        "Origin: https://search.bilibili.com",
+        "Referer: https://search.bilibili.com/"
+    )
     @GET("x/web-interface/wbi/search/type")
     suspend fun searchArticle(@QueryMap params: Map<String, String>): SearchArticleResponse
 }
