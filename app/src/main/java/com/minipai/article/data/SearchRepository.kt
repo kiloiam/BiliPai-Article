@@ -1,5 +1,6 @@
 package com.minipai.article.data
 
+import android.util.Log
 import com.minipai.article.core.database.SearchHistory
 import com.minipai.article.core.database.SearchHistoryDao
 import com.minipai.article.core.network.NetworkModule
@@ -41,7 +42,7 @@ class SearchRepository(
                 "search_type" to "article",
                 "page" to page.toString(),
                 "page_size" to pageSize.toString(),
-                "platform" to "pc",
+                "platform" to "web",
                 "web_location" to "1430654",
                 "order" to "totalrank"
             )
@@ -55,6 +56,9 @@ class SearchRepository(
             }
 
             val data = response.data ?: SearchArticleData()
+            if (data.result.isNullOrEmpty()) {
+                Log.w("SearchRepo", "B站返回空结果: keyword='$keyword' code=${response.code}")
+            }
             val cleaned = data.copy(
                 result = data.result?.map { it.cleanupFields() }
             )
@@ -101,7 +105,7 @@ class SearchRepository(
             val keysResult = WbiKeyManager.getWbiKeys()
             val (imgKey, subKey) = keysResult.getOrNull() ?: ("" to "")
             if (imgKey.isNotEmpty() && subKey.isNotEmpty()) {
-                WbiUtils.sign(params, imgKey, subKey, includeRiskFingerprint = true)
+                WbiUtils.sign(params, imgKey, subKey, includeRiskFingerprint = false)
             } else {
                 params
             }
