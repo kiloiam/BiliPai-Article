@@ -39,6 +39,7 @@ class SearchRepository(
             val params = mapOf(
                 "keyword" to keyword,
                 "search_type" to "article",
+                "order" to "pubdate",
                 "page" to page.toString(),
                 "page_size" to pageSize.toString(),
                 "platform" to "pc",
