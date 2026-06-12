@@ -8,7 +8,6 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.minipai.article.core.database.AppDatabase
 import com.minipai.article.core.network.NetworkModule
-import com.minipai.article.core.network.WbiKeyManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -57,13 +56,10 @@ class ArticleApp : Application(), ImageLoaderFactory {
             previousHandler?.uncaughtException(thread, throwable)
         }
 
-        // 1) 注入 Context 到 NetworkModule / WbiKeyManager
+        // 1) 注入 Context 到 NetworkModule / WbiKeyManager（含 SP 恢复）
         NetworkModule.init(this)
 
-        // 2) 从本地恢复 WBI 密钥（对齐 BiliPai 原版：同步 restore + 异步预刷）
-        WbiKeyManager.restoreFromStorage(this)
-
-        // 3) 后台预热 B 站会话 + 预刷 WBI 密钥
+        // 2) 后台预热 B 站会话（NetworkModule.warmup 内部已预刷 WBI 密钥）
         appScope.launch {
             runCatching { NetworkModule.warmup() }
         }
