@@ -45,6 +45,7 @@ object NetworkModule {
     fun init(context: Context) {
         appContext = context.applicationContext
         WbiKeyManager.init(context.applicationContext)
+        cookieJar.init(context.applicationContext)
     }
 
     val json: Json = Json {
@@ -72,16 +73,22 @@ object NetworkModule {
                 val original = chain.request()
                 val url = original.url
                 val path = url.encodedPath
+
+                // 动态 Referer / Origin（对齐 BiliPai 原版上下文感知模式）
+                val isSearchPath = path.contains("/x/web-interface/")
+                val origin = if (isSearchPath) SEARCH_ORIGIN else "https://www.bilibili.com"
+                val referer = if (isSearchPath) SEARCH_REFERER else "https://www.bilibili.com"
+                val isWbiEndpoint = path.contains("/wbi/")
+
                 val builder = original.newBuilder()
                     .header("User-Agent", CHROME_UA)
-                // Origin: 已有 @Headers 注解的不覆盖
-                if (original.header("Origin") == null) {
-                    builder.header("Origin", "https://www.bilibili.com")
+                    .header("Origin", origin)
+                if (!isWbiEndpoint) {
+                    builder.header("Referer", referer)
                 }
-                // WBI 签名路径不设 Referer；已有 @Headers 的不覆盖
-                if (!path.contains("/wbi/") && original.header("Referer") == null) {
-                    builder.header("Referer", "https://www.bilibili.com")
-                }
+
+                Log.d(TAG, "→ ${original.method} ${url.host}$path" +
+                    ", Referer=${if (isWbiEndpoint) "OMITTED(WBI)" else referer}")
                 chain.proceed(builder.build())
             }
             .build()

@@ -8,6 +8,12 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.minipai.article.core.database.AppDatabase
 import com.minipai.article.core.network.NetworkModule
+import com.minipai.article.core.network.WbiKeyManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -21,6 +27,9 @@ import java.util.Locale
 class ArticleApp : Application(), ImageLoaderFactory {
 
     val database: AppDatabase by lazy { AppDatabase.getDatabase(this) }
+
+    /** 应用级协程 scope，用于后台预热等一次性任务；进程结束时 cancel */
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -48,15 +57,21 @@ class ArticleApp : Application(), ImageLoaderFactory {
             previousHandler?.uncaughtException(thread, throwable)
         }
 
-        // 1) 注入 Context 到 NetworkModule（让 OkHttp cacheDir 可用）
+        // 1) 注入 Context 到 NetworkModule / WbiKeyManager
         NetworkModule.init(this)
 
-        // 2) 后台预热 B 站会话（冷启动直搜会被风控拦截）
-        Thread {
-            runCatching {
-                kotlinx.coroutines.runBlocking { NetworkModule.warmup() }
-            }
-        }.start()
+        // 2) 从本地恢复 WBI 密钥（对齐 BiliPai 原版：同步 restore + 异步预刷）
+        WbiKeyManager.restoreFromStorage(this)
+
+        // 3) 后台预热 B 站会话 + 预刷 WBI 密钥
+        appScope.launch {
+            runCatching { NetworkModule.warmup() }
+        }
+    }
+
+    override fun onTerminate() {
+        super.onTerminate()
+        appScope.cancel()
     }
 
     override fun newImageLoader(): ImageLoader {
