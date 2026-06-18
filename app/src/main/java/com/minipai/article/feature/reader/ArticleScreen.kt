@@ -8,14 +8,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
@@ -67,43 +64,48 @@ fun ArticleScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val articleUrl = remember(cvId) { "https://www.bilibili.com/read/cv$cvId" }
 
-    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // 主内容（先渲染，toolbar 覆盖层在上）
-            when {
-                state.isLoading && state.detail == null -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = BiliPink)
-                    }
-                }
-                state.error != null && state.detail == null -> {
-                    ErrorView(
-                        message = state.error!!,
-                        onRetry = viewModel::reload,
-                        onOpenBrowser = {
-                            runCatching {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articleUrl))
-                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                context.startActivity(intent)
-                            }
+            // 主内容：statusBarsPadding + top(48dp) 确保内容在工具栏下方
+            // 两者叠加 = 状态栏高度 + 工具栏高度，对齐工具栏实际占位
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .padding(top = 48.dp)
+            ) {
+                when {
+                    state.isLoading && state.detail == null -> {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = BiliPink)
                         }
-                    )
-                }
-                state.detail != null -> {
-                    ArticleNativeView(
-                        detail = state.detail!!,
-                        fontSize = state.fontSize,
-                        initialIndex = state.initialScrollIndex,
-                        initialOffset = state.initialScrollOffset,
-                        statusBarTop = statusBarHeight,
-                        onScrollChanged = viewModel::onScrollChanged,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    }
+                    state.error != null && state.detail == null -> {
+                        ErrorView(
+                            message = state.error!!,
+                            onRetry = viewModel::reload,
+                            onOpenBrowser = {
+                                runCatching {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articleUrl))
+                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    context.startActivity(intent)
+                                }
+                            }
+                        )
+                    }
+                    state.detail != null -> {
+                        ArticleNativeView(
+                            detail = state.detail!!,
+                            fontSize = state.fontSize,
+                            initialIndex = state.initialScrollIndex,
+                            initialOffset = state.initialScrollOffset,
+                            onScrollChanged = viewModel::onScrollChanged,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
 

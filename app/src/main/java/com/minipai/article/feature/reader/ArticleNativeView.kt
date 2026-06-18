@@ -44,7 +44,6 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -73,7 +72,6 @@ fun ArticleNativeView(
     fontSize: Int,
     initialIndex: Int,
     initialOffset: Int,
-    statusBarTop: Dp = 0.dp,
     onScrollChanged: (Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -92,13 +90,12 @@ fun ArticleNativeView(
         onScrollChanged(currentIndex, currentOffset)
     }
 
-    // 顶部 toolbar 高度 = statusBar 内边距 + 48dp 工具栏
-    val topPadding = 48.dp + statusBarTop
-
+    // 顶栏间距由外层 Box 的 statusBarsPadding() + padding(top=48.dp) 提供，
+    // 此处仅保留 12dp 的视觉呼吸空间
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = topPadding, bottom = 48.dp, start = 20.dp, end = 20.dp),
+        contentPadding = PaddingValues(top = 12.dp, bottom = 48.dp, start = 20.dp, end = 20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item(key = "header") {
