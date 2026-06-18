@@ -1,6 +1,7 @@
 package com.minipai.article.data
 
 import com.minipai.article.core.network.NetworkModule
+import com.minipai.article.core.network.WbiKeyManager
 import com.minipai.article.core.network.WbiUtils
 import com.minipai.article.core.network.normalizeSearchImageUrl
 import com.minipai.article.core.network.model.Stats
@@ -62,20 +63,25 @@ class ArticleRepository {
     }
 
     /**
-     * WBI 签名（对齐 BiliPai 原版：每次都实时获取 nav 密钥，不做缓存）。
+     * 实时拉取 WBI 密钥并签名（对齐 BiliPai 原版）。
      */
     private suspend fun signWithWbi(params: Map<String, String>): Map<String, String> {
         return try {
-            val navResp = NetworkModule.navApi.getNavInfo()
-            val wbiImg = navResp.data?.wbi_img
-            val imgKey = wbiImg?.img_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
-            val subKey = wbiImg?.sub_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
-            if (imgKey.isNotEmpty() && subKey.isNotEmpty()) {
-                WbiUtils.sign(params, imgKey, subKey)
+            val keys = WbiKeyManager.getWbiKeys().getOrNull()
+            if (keys != null) {
+                WbiUtils.sign(params, keys.first, keys.second, includeRiskFingerprint = true)
             } else {
-                params
+                val navResp = NetworkModule.navApi.getNavInfo()
+                val wbiImg = navResp.data?.wbi_img
+                val imgKey = wbiImg?.img_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
+                val subKey = wbiImg?.sub_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
+                if (imgKey.isNotEmpty() && subKey.isNotEmpty()) {
+                    WbiUtils.sign(params, imgKey, subKey, includeRiskFingerprint = true)
+                } else {
+                    params
+                }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             params
         }
     }
