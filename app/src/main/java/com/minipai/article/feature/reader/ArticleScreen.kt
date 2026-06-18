@@ -47,8 +47,8 @@ import com.minipai.article.core.ui.theme.BiliPink
 /**
  * 文章阅读页（原生渲染版）。
  *
- * 替换原先的 WebView + reader.css 方案，预期单页内存 30-60MB（vs WebView 200-635MB）。
- * 顶部 toolbar 保留原视觉：返回 / 标题 / 字号- / 字号+ / 分享 / 浏览器打开。
+ * 顶部导航栏固定在顶部，内容区域填充剩余空间。
+ * 不使用 Box 覆盖层，内容不会与导航栏重叠。
  */
 @Composable
 fun ArticleScreen(
@@ -64,126 +64,114 @@ fun ArticleScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val articleUrl = remember(cvId) { "https://www.bilibili.com/read/cv$cvId" }
 
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // 主内容：statusBarsPadding + top(48dp) 确保内容在工具栏下方
-            // 两者叠加 = 状态栏高度 + 工具栏高度，对齐工具栏实际占位
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .padding(top = 48.dp)
-            ) {
-                when {
-                    state.isLoading && state.detail == null -> {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = BiliPink)
-                        }
-                    }
-                    state.error != null && state.detail == null -> {
-                        ErrorView(
-                            message = state.error!!,
-                            onRetry = viewModel::reload,
-                            onOpenBrowser = {
-                                runCatching {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articleUrl))
-                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                    context.startActivity(intent)
-                                }
-                            }
-                        )
-                    }
-                    state.detail != null -> {
-                        ArticleNativeView(
-                            detail = state.detail!!,
-                            fontSize = state.fontSize,
-                            initialIndex = state.initialScrollIndex,
-                            initialOffset = state.initialScrollOffset,
-                            onScrollChanged = viewModel::onScrollChanged,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
-            }
-
-            // 顶部 toolbar（覆盖层，固定不滚动）
-            Surface(
+    Column(modifier = modifier.fillMaxSize()) {
+        // 顶部导航栏（固定不滚动）
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding(),
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 2.dp
+        ) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding()
-                    .align(Alignment.TopCenter),
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 2.dp
+                    .height(48.dp)
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .padding(horizontal = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.Outlined.ArrowBack,
-                            contentDescription = "返回",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    Text(
-                        text = state.detail?.title ?: "专栏 $cvId",
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 4.dp),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = Icons.Outlined.ArrowBack,
+                        contentDescription = "返回",
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
-                    IconButton(onClick = { viewModel.setFontSize(state.fontSize - 2) }) {
-                        Icon(
-                            imageVector = Icons.Outlined.TextDecrease,
-                            contentDescription = "缩小字号",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                }
+                Text(
+                    text = state.detail?.title ?: "专栏 $cvId",
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 4.dp),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                IconButton(onClick = { viewModel.setFontSize(state.fontSize - 2) }) {
+                    Icon(
+                        imageVector = Icons.Outlined.TextDecrease,
+                        contentDescription = "缩小字号",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                IconButton(onClick = { viewModel.setFontSize(state.fontSize + 2) }) {
+                    Icon(
+                        imageVector = Icons.Outlined.TextIncrease,
+                        contentDescription = "放大字号",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                IconButton(onClick = {
+                    runCatching {
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, articleUrl)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "分享到"))
                     }
-                    IconButton(onClick = { viewModel.setFontSize(state.fontSize + 2) }) {
-                        Icon(
-                            imageVector = Icons.Outlined.TextIncrease,
-                            contentDescription = "放大字号",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                }) {
+                    Icon(
+                        imageVector = Icons.Outlined.Share,
+                        contentDescription = stringResource(R.string.reader_share),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                IconButton(onClick = {
+                    runCatching {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articleUrl))
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        context.startActivity(intent)
                     }
-                    IconButton(onClick = {
-                        runCatching {
-                            val intent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, articleUrl)
+                }) {
+                    Icon(
+                        imageVector = Icons.Outlined.OpenInBrowser,
+                        contentDescription = stringResource(R.string.reader_open_browser),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+
+        // 主内容（导航栏下方，填满剩余空间）
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
+                state.isLoading && state.detail == null -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = BiliPink)
+                    }
+                }
+                state.error != null && state.detail == null -> {
+                    ErrorView(
+                        message = state.error!!,
+                        onRetry = viewModel::reload,
+                        onOpenBrowser = {
+                            runCatching {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articleUrl))
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                context.startActivity(intent)
                             }
-                            context.startActivity(Intent.createChooser(intent, "分享到"))
                         }
-                    }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Share,
-                            contentDescription = stringResource(R.string.reader_share),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    IconButton(onClick = {
-                        runCatching {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articleUrl))
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            context.startActivity(intent)
-                        }
-                    }) {
-                        Icon(
-                            imageVector = Icons.Outlined.OpenInBrowser,
-                            contentDescription = stringResource(R.string.reader_open_browser),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
+                    )
+                }
+                state.detail != null -> {
+                    ArticleNativeView(
+                        detail = state.detail!!,
+                        fontSize = state.fontSize,
+                        initialIndex = state.initialScrollIndex,
+                        initialOffset = state.initialScrollOffset,
+                        onScrollChanged = viewModel::onScrollChanged,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
             }
         }

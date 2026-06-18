@@ -90,7 +90,7 @@ fun ArticleNativeView(
         onScrollChanged(currentIndex, currentOffset)
     }
 
-    // 顶栏间距由外层 Box 的 statusBarsPadding() + padding(top=48.dp) 提供，
+    // 顶栏间距由 ArticleScreen 的 Column 布局提供（导航栏固定在上，内容填满下方），
     // 此处仅保留 12dp 的视觉呼吸空间
     LazyColumn(
         state = listState,
