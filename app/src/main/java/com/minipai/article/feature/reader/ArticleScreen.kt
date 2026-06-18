@@ -66,10 +66,9 @@ fun ArticleScreen(
 
     Column(modifier = modifier.fillMaxSize()) {
         // 顶部导航栏（固定不滚动）
+        // 注意：外层 Scaffold 已处理 statusBar 内边距，此处不加 statusBarsPadding 避免双重偏移
         Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding(),
+            modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.surface,
             shadowElevation = 2.dp
         ) {

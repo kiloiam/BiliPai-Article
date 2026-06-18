@@ -99,7 +99,7 @@ fun ArticleNativeView(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item(key = "header") {
-            ArticleHeader(detail)
+            ArticleHeader(detail, fontSize)
         }
         itemsIndexed(items = detail.blocks, key = { index, block -> blockKey(index, block) }) { _, block ->
             BlockRender(
@@ -132,31 +132,32 @@ private fun blockKey(index: Int, block: ArticleBlock): String = when (block) {
 }
 
 @Composable
-private fun ArticleHeader(detail: ArticleDetail) {
+private fun ArticleHeader(detail: ArticleDetail, fontSize: Int) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = detail.title,
-            style = MaterialTheme.typography.headlineLarge,
+            fontSize = (fontSize + 4).sp,
+            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(Modifier.height(12.dp))
         if (detail.authorName.isNotBlank()) {
             Text(
                 text = detail.authorName + formatPublishTime(detail.publishTime),
-                style = MaterialTheme.typography.bodySmall,
+                fontSize = (fontSize - 2).sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
             formatPublishTime(detail.publishTime).takeIf { it.isNotBlank() }?.let {
                 Text(
                     text = it,
-                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = (fontSize - 2).sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
         Spacer(Modifier.height(8.dp))
-        StatsRow(detail.stats)
+        StatsRow(detail.stats, fontSize)
         Spacer(Modifier.height(20.dp))
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         Spacer(Modifier.height(16.dp))
@@ -170,7 +171,7 @@ private fun formatPublishTime(epochSec: Long): String {
 }
 
 @Composable
-private fun StatsRow(stats: Stats) {
+private fun StatsRow(stats: Stats, fontSize: Int) {
     val parts = buildList {
         if (stats.view > 0) add("${stats.view} 浏览")
         if (stats.reply > 0) add("${stats.reply} 评论")
@@ -179,7 +180,7 @@ private fun StatsRow(stats: Stats) {
     if (parts.isEmpty()) return
     Text(
         text = parts.joinToString(" · "),
-        style = MaterialTheme.typography.bodySmall,
+        fontSize = (fontSize - 2).sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 }
