@@ -142,8 +142,8 @@ fun ArticleScreen(
             }
         }
 
-        // 主内容（导航栏下方，填满剩余空间）
-        Box(modifier = Modifier.fillMaxSize()) {
+        // 主内容：weight(1f) 填满导航栏下方剩余空间（fillMaxSize 在 Column 中不会自动分配剩余高度）
+        Box(modifier = Modifier.weight(1f)) {
             when {
                 state.isLoading && state.detail == null -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
