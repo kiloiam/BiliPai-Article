@@ -44,12 +44,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.minipai.article.R
 import com.minipai.article.core.ui.theme.BiliPink
 
-/**
- * 文章阅读页（原生渲染版）。
- *
- * 顶部导航栏固定在顶部，内容区域填充剩余空间。
- * 不使用 Box 覆盖层，内容不会与导航栏重叠。
- */
 @Composable
 fun ArticleScreen(
     cvId: Long,
@@ -64,87 +58,13 @@ fun ArticleScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val articleUrl = remember(cvId) { "https://www.bilibili.com/read/cv$cvId" }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        // 顶部导航栏（不使用 Surface，避免 shadowElevation 导致 z 轴重叠）
+    Box(modifier = modifier.fillMaxSize()) {
+        // 内容区域：padding(top = 48.dp) 确保不被顶部导航栏遮挡
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 4.dp),
-            contentAlignment = Alignment.CenterStart
+                .fillMaxSize()
+                .padding(top = 48.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.Outlined.ArrowBack,
-                        contentDescription = "返回",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                Text(
-                    text = state.detail?.title ?: "专栏 $cvId",
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 4.dp),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                IconButton(onClick = { viewModel.setFontSize(state.fontSize - 2) }) {
-                    Icon(
-                        imageVector = Icons.Outlined.TextDecrease,
-                        contentDescription = "缩小字号",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                IconButton(onClick = { viewModel.setFontSize(state.fontSize + 2) }) {
-                    Icon(
-                        imageVector = Icons.Outlined.TextIncrease,
-                        contentDescription = "放大字号",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                IconButton(onClick = {
-                    runCatching {
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, articleUrl)
-                        }
-                        context.startActivity(Intent.createChooser(intent, "分享到"))
-                    }
-                }) {
-                    Icon(
-                        imageVector = Icons.Outlined.Share,
-                        contentDescription = stringResource(R.string.reader_share),
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                IconButton(onClick = {
-                    runCatching {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articleUrl))
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        context.startActivity(intent)
-                    }
-                }) {
-                    Icon(
-                        imageVector = Icons.Outlined.OpenInBrowser,
-                        contentDescription = stringResource(R.string.reader_open_browser),
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        }
-
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-        // 主内容：weight(1f) 填满导航栏下方剩余空间
-        Box(modifier = Modifier.weight(1f)) {
             when {
                 state.isLoading && state.detail == null -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -174,6 +94,85 @@ fun ArticleScreen(
                         modifier = Modifier.fillMaxSize()
                     )
                 }
+            }
+        }
+
+        // 顶部导航栏
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+                .align(Alignment.TopCenter)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.Outlined.ArrowBack,
+                            contentDescription = "返回",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Text(
+                        text = state.detail?.title ?: "专栏 $cvId",
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 4.dp),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    IconButton(onClick = { viewModel.setFontSize(state.fontSize - 2) }) {
+                        Icon(
+                            imageVector = Icons.Outlined.TextDecrease,
+                            contentDescription = "缩小字号",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    IconButton(onClick = { viewModel.setFontSize(state.fontSize + 2) }) {
+                        Icon(
+                            imageVector = Icons.Outlined.TextIncrease,
+                            contentDescription = "放大字号",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    IconButton(onClick = {
+                        runCatching {
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, articleUrl)
+                            }
+                            context.startActivity(Intent.createChooser(intent, "分享到"))
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Share,
+                            contentDescription = stringResource(R.string.reader_share),
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    IconButton(onClick = {
+                        runCatching {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articleUrl))
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            context.startActivity(intent)
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Outlined.OpenInBrowser,
+                            contentDescription = stringResource(R.string.reader_open_browser),
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
     }
