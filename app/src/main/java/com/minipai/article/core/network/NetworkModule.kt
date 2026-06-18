@@ -36,7 +36,6 @@ object NetworkModule {
     private const val TAG = "NetworkModule"
     private const val CHROME_UA =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-    private const val SEARCH_ORIGIN = "https://search.bilibili.com"
     private const val SEARCH_REFERER = "https://search.bilibili.com/"
 
     internal var appContext: Context? = null
@@ -74,15 +73,14 @@ object NetworkModule {
                 val url = original.url
                 val path = url.encodedPath
 
-                // 动态 Referer / Origin（对齐 BiliPai 原版上下文感知模式）
-                val isSearchPath = path.contains("/x/web-interface/")
-                val origin = if (isSearchPath) SEARCH_ORIGIN else "https://www.bilibili.com"
-                val referer = if (isSearchPath) SEARCH_REFERER else "https://www.bilibili.com"
+                // Origin 统一使用 www.bilibili.com（对齐 BiliPai 原版：拦截器中 Origin 始终为主站域名）
+                // Referer 仅在非 WBI 路径设置；WBI 路径的 Referer 由 API 接口上的 @Headers 提供
                 val isWbiEndpoint = path.contains("/wbi/")
+                val referer = if (path.contains("/x/web-interface/")) SEARCH_REFERER else "https://www.bilibili.com"
 
                 val builder = original.newBuilder()
                     .header("User-Agent", CHROME_UA)
-                    .header("Origin", origin)
+                    .header("Origin", "https://www.bilibili.com")
                 if (!isWbiEndpoint) {
                     builder.header("Referer", referer)
                 }
