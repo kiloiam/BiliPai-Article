@@ -3,6 +3,7 @@ package com.minipai.article.feature.reader
 import android.app.Application
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
@@ -23,10 +23,10 @@ import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.TextDecrease
 import androidx.compose.material.icons.outlined.TextIncrease
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -65,18 +65,18 @@ fun ArticleScreen(
     val articleUrl = remember(cvId) { "https://www.bilibili.com/read/cv$cvId" }
 
     Column(modifier = modifier.fillMaxSize()) {
-        // 顶部导航栏（固定不滚动）
-        // 注意：外层 Scaffold 已处理 statusBar 内边距，此处不加 statusBarsPadding 避免双重偏移
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.surface,
-            shadowElevation = 2.dp
+        // 顶部导航栏（不使用 Surface，避免 shadowElevation 导致 z 轴重叠）
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 4.dp),
+            contentAlignment = Alignment.CenterStart
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
-                    .padding(horizontal = 4.dp),
+                    .height(48.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
@@ -141,7 +141,9 @@ fun ArticleScreen(
             }
         }
 
-        // 主内容：weight(1f) 填满导航栏下方剩余空间（fillMaxSize 在 Column 中不会自动分配剩余高度）
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+        // 主内容：weight(1f) 填满导航栏下方剩余空间
         Box(modifier = Modifier.weight(1f)) {
             when {
                 state.isLoading && state.detail == null -> {
