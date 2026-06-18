@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -64,16 +66,52 @@ fun ArticleScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val articleUrl = remember(cvId) { "https://www.bilibili.com/read/cv$cvId" }
 
+    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // 顶部 toolbar（固定不滚动，对齐 BiliPai 原版 AdaptiveTopAppBar 模式）
+        Box(modifier = Modifier.fillMaxSize()) {
+            // 主内容（先渲染，toolbar 覆盖层在上）
+            when {
+                state.isLoading && state.detail == null -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = BiliPink)
+                    }
+                }
+                state.error != null && state.detail == null -> {
+                    ErrorView(
+                        message = state.error!!,
+                        onRetry = viewModel::reload,
+                        onOpenBrowser = {
+                            runCatching {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articleUrl))
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                context.startActivity(intent)
+                            }
+                        }
+                    )
+                }
+                state.detail != null -> {
+                    ArticleNativeView(
+                        detail = state.detail!!,
+                        fontSize = state.fontSize,
+                        initialIndex = state.initialScrollIndex,
+                        initialOffset = state.initialScrollOffset,
+                        statusBarTop = statusBarHeight,
+                        onScrollChanged = viewModel::onScrollChanged,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+
+            // 顶部 toolbar（覆盖层，固定不滚动）
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding(),
+                    .statusBarsPadding()
+                    .align(Alignment.TopCenter),
                 color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 2.dp
             ) {
@@ -141,40 +179,6 @@ fun ArticleScreen(
                             imageVector = Icons.Outlined.OpenInBrowser,
                             contentDescription = stringResource(R.string.reader_open_browser),
                             tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-            }
-
-            // 主内容（toolbar 下方，不重叠）
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                when {
-                    state.isLoading && state.detail == null -> {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = BiliPink)
-                        }
-                    }
-                    state.error != null && state.detail == null -> {
-                        ErrorView(
-                            message = state.error!!,
-                            onRetry = viewModel::reload,
-                            onOpenBrowser = {
-                                runCatching {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articleUrl))
-                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                    context.startActivity(intent)
-                                }
-                            }
-                        )
-                    }
-                    state.detail != null -> {
-                        ArticleNativeView(
-                            detail = state.detail!!,
-                            fontSize = state.fontSize,
-                            initialIndex = state.initialScrollIndex,
-                            initialOffset = state.initialScrollOffset,
-                            onScrollChanged = viewModel::onScrollChanged,
-                            modifier = Modifier.fillMaxSize()
                         )
                     }
                 }
