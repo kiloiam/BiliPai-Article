@@ -3,6 +3,7 @@ package com.minipai.article.data
 import com.minipai.article.core.database.SearchHistory
 import com.minipai.article.core.database.SearchHistoryDao
 import com.minipai.article.core.network.NetworkModule
+import com.minipai.article.core.network.WbiKeyManager
 import com.minipai.article.core.network.WbiUtils
 import com.minipai.article.core.network.model.SearchArticleData
 import com.minipai.article.core.network.model.SearchArticleItem
@@ -12,10 +13,12 @@ import kotlinx.coroutines.withContext
 /**
  * 搜索仓库（对齐 BiliPai 原版 SearchRepository 行为）。
  *
- * - WBI 密钥每次实时从 nav API 获取（对齐 BiliPai 原版，不做缓存）
+ * 关键差异：
+ * - WBI 密钥通过 WbiKeyManager 24h 缓存 + SP 持久化（减少 nav 请求频率，降低 352 风险）
+ * - 发送 WBI 风控指纹 dm_img_* 字段（冷启动会话不足时必要）
  * - platform=pc
  * - 失败回退到无签名参数
- * - 明确处理 -352/-412 等风控错误码
+ * - 明确处理 -352 风控错误码
  */
 class SearchRepository(
     private val historyDao: SearchHistoryDao
@@ -86,20 +89,27 @@ class SearchRepository(
     // ============== 内部 ==============
 
     /**
-     * 实时拉取 WBI 密钥并签名（对齐 BiliPai 原版：每次请求都实时获取 nav，不做缓存）。
+     * 每次搜索实时拉取 WBI 密钥并签名（对齐 BiliPai 原版行为）。
+     * 不做缓存，避免密钥过期引发静默空结果。
      */
     private suspend fun signWithWbi(params: Map<String, String>): Map<String, String> {
         return try {
-            val navResp = NetworkModule.navApi.getNavInfo()
-            val wbiImg = navResp.data?.wbi_img
-            val imgKey = wbiImg?.img_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
-            val subKey = wbiImg?.sub_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
-            if (imgKey.isNotEmpty() && subKey.isNotEmpty()) {
-                WbiUtils.sign(params, imgKey, subKey)
+            val keys = WbiKeyManager.getWbiKeys().getOrNull()
+            if (keys != null) {
+                WbiUtils.sign(params, keys.first, keys.second, includeRiskFingerprint = true)
             } else {
-                params
+                // fallback: 实时拉取 WBI 密钥
+                val navResp = NetworkModule.navApi.getNavInfo()
+                val wbiImg = navResp.data?.wbi_img
+                val imgKey = wbiImg?.img_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
+                val subKey = wbiImg?.sub_url?.substringAfterLast("/")?.substringBefore(".") ?: ""
+                if (imgKey.isNotEmpty() && subKey.isNotEmpty()) {
+                    WbiUtils.sign(params, imgKey, subKey, includeRiskFingerprint = true)
+                } else {
+                    params
+                }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             params
         }
     }
