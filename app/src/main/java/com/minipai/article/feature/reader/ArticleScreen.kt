@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ArrowBack
@@ -68,45 +69,12 @@ fun ArticleScreen(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // 主内容
-            when {
-                state.isLoading && state.detail == null -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = BiliPink)
-                    }
-                }
-                state.error != null && state.detail == null -> {
-                    ErrorView(
-                        message = state.error!!,
-                        onRetry = viewModel::reload,
-                        onOpenBrowser = {
-                            runCatching {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articleUrl))
-                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                context.startActivity(intent)
-                            }
-                        }
-                    )
-                }
-                state.detail != null -> {
-                    ArticleNativeView(
-                        detail = state.detail!!,
-                        fontSize = state.fontSize,
-                        initialIndex = state.initialScrollIndex,
-                        initialOffset = state.initialScrollOffset,
-                        onScrollChanged = viewModel::onScrollChanged,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }
-
-            // 顶部 toolbar（statusBarsPadding 在 Surface 层避免 cutout 遮挡标题）
+        Column(modifier = Modifier.fillMaxSize()) {
+            // 顶部 toolbar（固定不滚动，对齐 BiliPai 原版 AdaptiveTopAppBar 模式）
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding()
-                    .align(Alignment.TopCenter),
+                    .statusBarsPadding(),
                 color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 2.dp
             ) {
@@ -117,65 +85,99 @@ fun ArticleScreen(
                         .padding(horizontal = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                imageVector = Icons.Outlined.ArrowBack,
-                                contentDescription = "返回",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        Text(
-                            text = state.detail?.title ?: "专栏 $cvId",
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 4.dp),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.Outlined.ArrowBack,
+                            contentDescription = "返回",
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
-                        IconButton(onClick = { viewModel.setFontSize(state.fontSize - 2) }) {
-                            Icon(
-                                imageVector = Icons.Outlined.TextDecrease,
-                                contentDescription = "缩小字号",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
+                    }
+                    Text(
+                        text = state.detail?.title ?: "专栏 $cvId",
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 4.dp),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    IconButton(onClick = { viewModel.setFontSize(state.fontSize - 2) }) {
+                        Icon(
+                            imageVector = Icons.Outlined.TextDecrease,
+                            contentDescription = "缩小字号",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    IconButton(onClick = { viewModel.setFontSize(state.fontSize + 2) }) {
+                        Icon(
+                            imageVector = Icons.Outlined.TextIncrease,
+                            contentDescription = "放大字号",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    IconButton(onClick = {
+                        runCatching {
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, articleUrl)
+                            }
+                            context.startActivity(Intent.createChooser(intent, "分享到"))
                         }
-                        IconButton(onClick = { viewModel.setFontSize(state.fontSize + 2) }) {
-                            Icon(
-                                imageVector = Icons.Outlined.TextIncrease,
-                                contentDescription = "放大字号",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
+                    }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Share,
+                            contentDescription = stringResource(R.string.reader_share),
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    IconButton(onClick = {
+                        runCatching {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articleUrl))
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            context.startActivity(intent)
                         }
-                        IconButton(onClick = {
-                            runCatching {
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, articleUrl)
+                    }) {
+                        Icon(
+                            imageVector = Icons.Outlined.OpenInBrowser,
+                            contentDescription = stringResource(R.string.reader_open_browser),
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+
+            // 主内容（toolbar 下方，不重叠）
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                when {
+                    state.isLoading && state.detail == null -> {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = BiliPink)
+                        }
+                    }
+                    state.error != null && state.detail == null -> {
+                        ErrorView(
+                            message = state.error!!,
+                            onRetry = viewModel::reload,
+                            onOpenBrowser = {
+                                runCatching {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articleUrl))
+                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    context.startActivity(intent)
                                 }
-                                context.startActivity(Intent.createChooser(intent, "分享到"))
                             }
-                        }) {
-                            Icon(
-                                imageVector = Icons.Outlined.Share,
-                                contentDescription = stringResource(R.string.reader_share),
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        IconButton(onClick = {
-                            runCatching {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articleUrl))
-                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                context.startActivity(intent)
-                            }
-                        }) {
-                            Icon(
-                                imageVector = Icons.Outlined.OpenInBrowser,
-                                contentDescription = stringResource(R.string.reader_open_browser),
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
+                        )
+                    }
+                    state.detail != null -> {
+                        ArticleNativeView(
+                            detail = state.detail!!,
+                            fontSize = state.fontSize,
+                            initialIndex = state.initialScrollIndex,
+                            initialOffset = state.initialScrollOffset,
+                            onScrollChanged = viewModel::onScrollChanged,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
         }

@@ -90,12 +90,10 @@ fun ArticleNativeView(
         onScrollChanged(currentIndex, currentOffset)
     }
 
-    // 顶部留出工具栏高度（48dp）。状态栏由外层 Scaffold 的 contentPadding 处理，
-    // 此处不再重复加 statusBars height，避免工具栏与正文之间出现多余间隙。
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 48.dp, bottom = 48.dp, start = 20.dp, end = 20.dp),
+        contentPadding = PaddingValues(top = 12.dp, bottom = 48.dp, start = 20.dp, end = 20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item(key = "header") {
